@@ -84,6 +84,10 @@ FEATURES:
     - Interactive confirmation for safety
     - Separate push command for controlled uploads
     - Supports dry-run mode for testing
+    - Different commit messages for version types:
+      * Dev versions: "Start X.Y.Z-dev"
+      * RC versions: "Release candidate X.Y.Z-rcN"
+      * Final releases: "Release X.Y.Z"
 
 VERSION FORMAT:
     Semantic versioning: MAJOR.MINOR.PATCH
@@ -339,7 +343,18 @@ create_release() {
     else
         print_info "Committing version updates..."
         git add VERSION README.md README_CN.md
-        git commit -m "Release $NEW_VERSION"
+
+        # Determine commit message based on version type
+        local commit_msg=""
+        if [[ "$NEW_VERSION" =~ -dev$ ]]; then
+            commit_msg="Start $NEW_VERSION"
+        elif [[ "$NEW_VERSION" =~ -rc[0-9]+$ ]]; then
+            commit_msg="Release candidate $NEW_VERSION"
+        else
+            commit_msg="Release $NEW_VERSION"
+        fi
+
+        git commit -m "$commit_msg"
 
         # Create git tag (local only)
         create_tag "$NEW_VERSION"
