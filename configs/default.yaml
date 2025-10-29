@@ -1,0 +1,140 @@
+# AIM Default Configuration File v1.0
+# This is the global configuration template, will be installed to ~/.config/aim/config.yaml
+
+version: "1.0"
+
+# Global Settings
+settings:
+  language: en                      # Language: en/zh
+  default_tool: claude-code         # Default tool
+  default_provider: deepseek        # Default provider
+  timeout: 60000                    # Default timeout (milliseconds)
+
+# Global Provider Configuration (OpenAI Compatible Endpoints)
+providers:
+  deepseek:
+    base_url: https://api.deepseek.com/v1
+    model: deepseek-chat
+    timeout: 60000
+
+  glm:
+    base_url: https://open.bigmodel.cn/api/paas/v4
+    model: glm-4.6
+    timeout: 300000
+
+  glm-coding:
+    base_url: https://open.bigmodel.cn/api/coding/paas/v4
+    model: glm-4.6
+    timeout: 300000
+
+  kimi:
+    base_url: https://api.moonshot.cn/v1
+    model: moonshot-v1-8k
+    timeout: 60000
+
+  qwen:
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    model: qwen-plus
+    timeout: 60000
+
+# API Key Management
+keys:
+  deepseek-key:
+    provider: deepseek
+    key: ${DEEPSEEK_API_KEY}
+    description: "DeepSeek API Key"
+
+  glm-key:
+    provider: glm
+    key: ${GLM_API_KEY}
+    description: "GLM API Key"
+
+  kimi-key:
+    provider: kimi
+    key: ${KIMI_API_KEY}
+    description: "KIMI API Key"
+
+  qwen-key:
+    provider: qwen
+    key: ${QWEN_API_KEY}
+    description: "Qwen API Key"
+
+# Tool Configuration
+tools:
+  claude-code:
+    command: claude
+    enabled: true
+
+    # Tool-level default configuration
+    defaults:
+      timeout: 60000
+      env:
+        CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
+
+    # Field mapping definition
+    field_mapping:
+      ANTHROPIC_AUTH_TOKEN: keys.{current_key}.key
+      ANTHROPIC_BASE_URL: profiles.{current_profile}.base_url
+      ANTHROPIC_MODEL: profiles.{current_profile}.model
+      API_TIMEOUT_MS: profiles.{current_profile}.timeout
+
+    # Tool-specific Provider Configuration (Profile)
+    profiles:
+      deepseek:
+        provider: deepseek
+        base_url: https://api.deepseek.com/anthropic  # Claude Code specific endpoint
+
+      glm:
+        provider: glm
+        base_url: https://open.bigmodel.cn/api/anthropic  # Claude Code specific endpoint
+        env:
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: glm-4.5-air
+          ANTHROPIC_DEFAULT_SONNET_MODEL: glm-4.6
+          ANTHROPIC_DEFAULT_OPUS_MODEL: glm-4.6
+
+      glm-coding:
+        provider: glm-coding
+        base_url: https://open.bigmodel.cn/api/anthropic  # Claude Code specific endpoint
+        env:
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: glm-4.5-air
+          ANTHROPIC_DEFAULT_SONNET_MODEL: glm-4.6
+          ANTHROPIC_DEFAULT_OPUS_MODEL: glm-4.6
+
+      kimi:
+        provider: kimi
+        base_url: https://api.moonshot.cn/anthropic  # Claude Code specific endpoint
+
+      qwen:
+        provider: qwen
+        base_url: https://dashscope.aliyuncs.com/api/v2/apps/claude-code-proxy  # Claude Code specific endpoint
+
+  codex:
+    command: codex
+    enabled: true
+
+    field_mapping:
+      OPENAI_BASE_URL: profiles.{current_profile}.base_url
+      OPENAI_MODEL: profiles.{current_profile}.model
+      OPENAI_TIMEOUT: profiles.{current_profile}.timeout
+      # API key environment variable will be set dynamically based on provider
+
+    profiles:
+      deepseek:
+        provider: deepseek
+        # Inherit global deepseek configuration (OpenAI compatible endpoint)
+
+      glm:
+        provider: glm
+        # Inherit global glm configuration (OpenAI compatible endpoint)
+
+      glm-coding:
+        provider: glm-coding
+        # Inherit global glm-coding configuration (OpenAI compatible endpoint)
+
+      kimi:
+        provider: kimi
+        # Inherit global kimi configuration (OpenAI compatible endpoint)
+
+      qwen:
+        provider: qwen
+        # Inherit global qwen configuration (OpenAI compatible endpoint)

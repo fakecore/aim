@@ -1,0 +1,69 @@
+name: RC Pre-release
+
+on:
+    push:
+        tags:
+            - "v*.*.*-rc.*"
+
+jobs:
+    pre-release:
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        permissions:
+            contents: write
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Set up Go
+              uses: actions/setup-go@v4
+              with:
+                  go-version: "1.25.1"
+
+            - name: Get version
+              id: version
+              run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+            - name: Cache Go modules
+              uses: actions/cache@v3
+              with:
+                  path: |
+                      ~/.cache/go-build
+                      ~/go/pkg/mod
+                  key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+                  restore-keys: |
+                      ${{ runner.os }}-go-
+
+            - name: Download dependencies
+              run: make mod
+
+            - name: Run tests
+              run: make test
+
+            - name: Build all platforms
+              run: make build-all VERSION=${{ steps.version.outputs.VERSION }}
+
+            - name: Generate checksums
+              run: |
+                  cd bin
+                  sha256sum * > checksums.txt
+
+            - name: Generate Release Notes
+              id: release_notes
+              run: |
+                  .github/scripts/generate-release-notes.sh ${{ steps.version.outputs.VERSION }} > release_notes.md
+
+            - name: Create RC Pre-release
+              uses: softprops/action-gh-release@v1
+              with:
+                  tag_name: ${{ steps.version.outputs.VERSION }}
+                  name: RC Pre-release ${{ steps.version.outputs.VERSION }}
+                  body_path: release_notes.md
+                  files: |
+                      bin/*
+                  draft: false
+                  prerelease: true
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
