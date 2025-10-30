@@ -96,7 +96,7 @@ aim run codex --key another-key
 - **GLM (智谱清言)** - 中文 AI 模型
 - **KIMI (月之暗面)** - 长上下文 AI 模型
 - **Qwen (通义千问)** - 通义千问系列模型
-- **Claude (Anthropic)** - Claude 官方 API
+- **持续增加**
 
 ## 🧪 兼容性测试
 
@@ -118,7 +118,6 @@ aim run codex --key another-key
 | GLM | ✅ 已测试 | API 连接和基本功能正常 |
 | KIMI | ⏳ 待测试 | 计划在后续版本中测试 |
 | Qwen | ⏳ 待测试 | 计划在后续版本中测试 |
-| Claude | ⏳ 待测试 | 计划在后续版本中测试 |
 
 > 💡 **提示**：如果您在其他操作系统或使用未测试的提供商时遇到问题，欢迎提交 [Issue](https://github.com/fakecore/aim/issues) 帮助我们改进兼容性。
 

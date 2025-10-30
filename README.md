@@ -12,8 +12,6 @@ English | [简体中文](README_CN.md)
 
 </div>
 
----
-
 ## 📖 Overview
 
 AIM (AI Model Manager) is a powerful command-line tool designed to simplify the management of multiple AI CLI tools (like Claude Code) and their model providers. It provides a unified interface for switching between AI models, managing API keys, and configuring your development environment.
@@ -38,20 +36,18 @@ This is a project almost entirely completed (99%) with AI assistance—I'm respo
 
 Welcome to experience this tool completed through human "manual labor" and AI "mental labor" :)
 
----
-
 ## 🚀 Quick Start
 
 ### Installation
 
 **One-line install:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --version v1.1.0-dev| bash
+curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --version v1.1.0-dev
 ```
 
 **User installation (no sudo):**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --version v1.1.0-dev| bash -s -- --user
+curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --version v1.1.0-dev --user
 ```
 
 ### Basic Usage
@@ -71,8 +67,6 @@ aim run cc --key mykey
 aim run codex --key another-key
 ```
 
----
-
 ## ✨ Features
 
 ### Implemented ✅
@@ -89,15 +83,11 @@ aim run codex --key another-key
 - **🔧 Tool Management** - Tool installation and updates, version management
 - **🎨 TUI Interface** - Interactive model selection, visual configuration editor
 
----
-
 ## 📚 Documentation
 
 - **[CI/CD Complete Guide](docs/cicd/CI_CD_EN.md)** - Continuous integration and deployment reference
 - **[Local Development Setup](docs/development-guide/LOCAL_DEV_EN.md)** - Local development environment configuration guide
 - **[TUI Interface Design](docs/tui-interface/TUI_DESIGN_EN.md)** - Terminal user interface design documentation
-
----
 
 ## 🎯 Supported Providers
 
@@ -105,9 +95,7 @@ aim run codex --key another-key
 - **GLM (Zhipu AI)** - Chinese AI models
 - **KIMI (Moonshot AI)** - Long-context AI models
 - **Qwen (Alibaba Cloud)** - Qwen series models
-- **Claude (Anthropic)** - Claude official API
-
----
+- **Continuously expanding**
 
 ## 🧪 Compatibility Testing
 
@@ -129,11 +117,8 @@ aim run codex --key another-key
 | GLM | ✅ Tested | API connection and basic functionality working |
 | KIMI | ⏳ Pending | Planned for testing in future releases |
 | Qwen | ⏳ Pending | Planned for testing in future releases |
-| Claude | ⏳ Pending | Planned for testing in future releases |
 
 > 💡 **Note**: If you encounter issues on other operating systems or with untested providers, please submit an [Issue](https://github.com/fakecore/aim/issues) to help us improve compatibility.
-
----
 
 ## 🏗️ Local Development
 
@@ -151,8 +136,6 @@ source test/local-dev-setup/dev-setup.sh     # Bash/Zsh
 source test/local-dev-setup/dev-setup.fish   # Fish
 ```
 
----
-
 ## 🗺️ Roadmap
 
 - [x] Project basic functionality development
@@ -165,8 +148,6 @@ source test/local-dev-setup/dev-setup.fish   # Fish
 - [ ] Local MCP support
 - [ ] IDE plugin configuration support
 
----
-
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Development Guide](docs/development-guide/LOCAL_DEV_EN.md) for details.
@@ -178,21 +159,15 @@ We welcome contributions! Please see our [Development Guide](docs/development-gu
 5. **Push to your fork** (`git push origin feature/amazing-feature`)
 6. **Create a Pull Request**
 
----
-
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
 
 ## 📞 Contact & Support
 
 - **Issue Feedback**: [GitHub Issues](https://github.com/fakecore/aim/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/fakecore/aim/discussions)
 - **Documentation**: [docs/](docs/)
-
----
 
 <div align="center">
 
