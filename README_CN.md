@@ -116,8 +116,8 @@ aim run codex --key another-key
 |--------|----------|------|
 | DeepSeek | ✅ 已测试 | API 连接和基本功能正常 |
 | GLM | ✅ 已测试 | API 连接和基本功能正常 |
-| KIMI | ⏳ 待测试 | 计划在后续版本中测试 |
-| Qwen | ⏳ 待测试 | 计划在后续版本中测试 |
+| KIMI | ✅ 已测试 | API 连接和基本功能正常 |
+| Qwen | ✅ 已测试 | API 连接和基本功能正常 |
 
 > 💡 **提示**：如果您在其他操作系统或使用未测试的提供商时遇到问题，欢迎提交 [Issue](https://github.com/fakecore/aim/issues) 帮助我们改进兼容性。
 
