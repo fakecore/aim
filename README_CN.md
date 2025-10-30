@@ -42,13 +42,13 @@ AIM (AI Model Manager) 是一个强大的命令行工具，旨在简化多个 AI
 
 **一行命令安装：**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --version v1.1.0-rc1|curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --version v1.1.0-rc1| bash
+curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash
 ```
 
 
 **用户目录安装（无需 sudo）：**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --version v1.1.0-rc1|curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --version v1.1.0-rc1| bash -s -- --user
+curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --user
 ```
 
 ### 基础用法

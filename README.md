@@ -42,12 +42,12 @@ Welcome to experience this tool completed through human "manual labor" and AI "m
 
 **One-line install:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --version v1.1.0-rc1|curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --version v1.1.0-rc1
+curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash
 ```
 
 **User installation (no sudo):**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --version v1.1.0-rc1|curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --version v1.1.0-rc1 --user
+curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --user
 ```
 
 ### Basic Usage
