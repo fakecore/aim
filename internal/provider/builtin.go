@@ -75,12 +75,18 @@ var builtinProviders = map[string]BuiltinProviderInfo{
 				Description: "Default configuration",
 				Tools: map[string]ToolConfig{
 					"claude-code": {
-						BaseURL: "https://api.moonshot.cn/anthropic",
+						BaseURL: "https://api.moonshot.cn/v1/anthropic",
 						Model:   "kimi-k2-turbo-preview",
 						Timeout: 60000,
 						Env: map[string]string{
 							"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 						},
+					},
+					"codex": {
+						BaseURL:    "https://api.moonshot.cn/v1",
+						Model:      "kimi-k2-turbo-preview",
+						Timeout:    60000,
+						EnvKeyName: "KIMI_API_KEY",
 					},
 				},
 			},
@@ -163,50 +169,11 @@ var builtinProviders = map[string]BuiltinProviderInfo{
 							"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 						},
 					},
-				},
-			},
-		},
-	},
-	"claude": {
-		Name:        "claude",
-		DisplayName: "Anthropic Claude",
-		Description: "Anthropic Claude - Safe and reliable AI assistant",
-		Website:     "https://www.anthropic.com",
-		Endpoints: []EndpointPreset{
-			{
-				Name:        "default",
-				Suffix:      "",
-				Description: "Default configuration",
-				Tools: map[string]ToolConfig{
-					"claude-code": {
-						BaseURL: "https://api.anthropic.com",
-						Model:   "claude-sonnet-4-5-20250929",
-						Timeout: 60000,
-						Env: map[string]string{
-							"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "claude-haiku-4-5",
-							"ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-5-20250929",
-							"ANTHROPIC_DEFAULT_OPUS_MODEL":   "claude-opus-4-1-20250805",
-						},
-					},
-				},
-			},
-		},
-	},
-	"openai": {
-		Name:        "openai",
-		DisplayName: "OpenAI GPT",
-		Description: "OpenAI GPT - Advanced large language model",
-		Website:     "https://www.openai.com",
-		Endpoints: []EndpointPreset{
-			{
-				Name:        "default",
-				Suffix:      "",
-				Description: "Default configuration",
-				Tools: map[string]ToolConfig{
-					"claude-code": {
-						BaseURL: "https://api.openai.com/v1",
-						Model:   "gpt-4",
-						Timeout: 60000,
+					"codex": {
+						BaseURL:    "https://dashscope.aliyuncs.com/compatible-mode/v1",
+						Model:      "qwen3-max",
+						Timeout:    60000,
+						EnvKeyName: "QWEN_API_KEY",
 					},
 				},
 			},
