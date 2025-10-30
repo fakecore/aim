@@ -5,10 +5,10 @@ version: "1.0"
 
 # Global Settings
 settings:
-  language: en                      # Language: en/zh
-  default_tool: claude-code         # Default tool
-  default_provider: deepseek        # Default provider
-  timeout: 60000                    # Default timeout (milliseconds)
+  language: en # Language: en/zh
+  default_tool: claude-code # Default tool
+  default_provider: deepseek # Default provider
+  timeout: 60000 # Default timeout (milliseconds)
 
 # Global Provider Configuration (OpenAI Compatible Endpoints)
 providers:
@@ -82,11 +82,11 @@ tools:
     profiles:
       deepseek:
         provider: deepseek
-        base_url: https://api.deepseek.com/anthropic  # Claude Code specific endpoint
+        base_url: https://api.deepseek.com/anthropic # Claude Code specific endpoint
 
       glm:
         provider: glm
-        base_url: https://open.bigmodel.cn/api/anthropic  # Claude Code specific endpoint
+        base_url: https://open.bigmodel.cn/api/anthropic # Claude Code specific endpoint
         env:
           ANTHROPIC_DEFAULT_HAIKU_MODEL: glm-4.5-air
           ANTHROPIC_DEFAULT_SONNET_MODEL: glm-4.6
@@ -94,7 +94,7 @@ tools:
 
       glm-coding:
         provider: glm-coding
-        base_url: https://open.bigmodel.cn/api/anthropic  # Claude Code specific endpoint
+        base_url: https://open.bigmodel.cn/api/anthropic # Claude Code specific endpoint
         env:
           ANTHROPIC_DEFAULT_HAIKU_MODEL: glm-4.5-air
           ANTHROPIC_DEFAULT_SONNET_MODEL: glm-4.6
@@ -102,39 +102,37 @@ tools:
 
       kimi:
         provider: kimi
-        base_url: https://api.moonshot.cn/anthropic  # Claude Code specific endpoint
+        base_url: https://api.moonshot.cn/anthropic # Claude Code specific endpoint
 
       qwen:
         provider: qwen
-        base_url: https://dashscope.aliyuncs.com/api/v2/apps/claude-code-proxy  # Claude Code specific endpoint
+        base_url: https://dashscope.aliyuncs.com/api/v2/apps/claude-code-proxy # Claude Code specific endpoint
 
   codex:
     command: codex
     enabled: true
-
     field_mapping:
       OPENAI_BASE_URL: profiles.{current_profile}.base_url
       OPENAI_MODEL: profiles.{current_profile}.model
       OPENAI_TIMEOUT: profiles.{current_profile}.timeout
-      # API key environment variable will be set dynamically based on provider
-
     profiles:
       deepseek:
         provider: deepseek
-        # Inherit global deepseek configuration (OpenAI compatible endpoint)
-
+        field_mapping:
+          DEEPSEEK_API_KEY: keys.{current_key}.key
       glm:
         provider: glm
-        # Inherit global glm configuration (OpenAI compatible endpoint)
-
+        field_mapping:
+          GLM_API_KEY: keys.{current_key}.key
       glm-coding:
         provider: glm-coding
-        # Inherit global glm-coding configuration (OpenAI compatible endpoint)
-
+        field_mapping:
+          GLM_API_KEY: keys.{current_key}.key
       kimi:
         provider: kimi
-        # Inherit global kimi configuration (OpenAI compatible endpoint)
-
+        field_mapping:
+          KIMI_API_KEY: keys.{current_key}.key
       qwen:
         provider: qwen
-        # Inherit global qwen configuration (OpenAI compatible endpoint)
+        field_mapping:
+          QWEN_API_KEY: keys.{current_key}.key
