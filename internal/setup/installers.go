@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -70,12 +69,12 @@ func (i *ClaudeCodeInstaller) Backup(req *InstallRequest) error {
 	}
 
 	// Copy file
-	data, err := ioutil.ReadFile(configPath)
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	if err := ioutil.WriteFile(backupPath, data, 0644); err != nil {
+	if err := os.WriteFile(backupPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write backup file: %w", err)
 	}
 
@@ -98,7 +97,7 @@ func (i *ClaudeCodeInstaller) ValidateConfig(path string) error {
 	}
 
 	// Try to parse JSON
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to read config file: %w", err)
 	}
@@ -206,12 +205,12 @@ func (i *CodexInstaller) Backup(req *InstallRequest) error {
 	}
 
 	// Copy file
-	data, err := ioutil.ReadFile(configPath)
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	if err := ioutil.WriteFile(backupPath, data, 0644); err != nil {
+	if err := os.WriteFile(backupPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write backup file: %w", err)
 	}
 
@@ -234,7 +233,7 @@ func (i *CodexInstaller) ValidateConfig(path string) error {
 	}
 
 	// Try to parse TOML
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to read config file: %w", err)
 	}
@@ -287,7 +286,7 @@ func (i *ClaudeCodeInstaller) checkManagedByAIM(configPath string) (bool, map[st
 	}
 
 	// Read existing configuration
-	data, err := ioutil.ReadFile(configPath)
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return false, nil, fmt.Errorf("failed to read config file: %w", err)
 	}
@@ -326,7 +325,7 @@ func (i *ClaudeCodeInstaller) installAIMManaged(req *InstallRequest, configPath 
 	}
 
 	// Directly overwrite the config file
-	if err := ioutil.WriteFile(configPath, configData, 0644); err != nil {
+	if err := os.WriteFile(configPath, configData, 0644); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
@@ -363,7 +362,7 @@ func (i *ClaudeCodeInstaller) installNonAIMManaged(req *InstallRequest, configPa
 	}
 
 	// Write configuration file
-	if err := ioutil.WriteFile(configPath, configData, 0644); err != nil {
+	if err := os.WriteFile(configPath, configData, 0644); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
@@ -385,7 +384,7 @@ func (i *ClaudeCodeInstaller) installNew(req *InstallRequest, configPath string)
 	}
 
 	// Write configuration file
-	if err := ioutil.WriteFile(configPath, configData, 0644); err != nil {
+	if err := os.WriteFile(configPath, configData, 0644); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
@@ -400,7 +399,7 @@ func (i *CodexInstaller) checkManagedByAIM(configPath string) (bool, map[string]
 	}
 
 	// Read existing configuration
-	data, err := ioutil.ReadFile(configPath)
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return false, nil, fmt.Errorf("failed to read config file: %w", err)
 	}
@@ -440,7 +439,7 @@ func (i *CodexInstaller) installAIMManaged(req *InstallRequest, configPath strin
 	configData := buf.Bytes()
 
 	// Directly overwrite the config file
-	if err := ioutil.WriteFile(configPath, configData, 0644); err != nil {
+	if err := os.WriteFile(configPath, configData, 0644); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
@@ -478,7 +477,7 @@ func (i *CodexInstaller) installNonAIMManaged(req *InstallRequest, configPath st
 	configData := buf.Bytes()
 
 	// Write configuration file
-	if err := ioutil.WriteFile(configPath, configData, 0644); err != nil {
+	if err := os.WriteFile(configPath, configData, 0644); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
@@ -501,7 +500,7 @@ func (i *CodexInstaller) installNew(req *InstallRequest, configPath string) erro
 	configData := buf.Bytes()
 
 	// Write configuration file
-	if err := ioutil.WriteFile(configPath, configData, 0644); err != nil {
+	if err := os.WriteFile(configPath, configData, 0644); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 

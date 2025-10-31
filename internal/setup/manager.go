@@ -3,7 +3,6 @@ package setup
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -575,13 +574,13 @@ func (sm *SetupManager) findLatestBackup(configPath string) (string, error) {
 // restoreFromBackup restores configuration from backup file
 func (sm *SetupManager) restoreFromBackup(installer ToolInstaller, backupPath, configPath string) error {
 	// Read backup file
-	data, err := ioutil.ReadFile(backupPath)
+	data, err := os.ReadFile(backupPath)
 	if err != nil {
 		return fmt.Errorf("failed to read backup file: %w", err)
 	}
 
 	// Write to configuration file
-	if err := ioutil.WriteFile(configPath, data, 0644); err != nil {
+	if err := os.WriteFile(configPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
