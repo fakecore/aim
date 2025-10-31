@@ -1,276 +1,275 @@
-# 本地测试环境使用指南
+# Local Development Environment Guide
 
-## 快速开始
+## Quick Start
 
 ```bash
-# 1. 初始化测试环境（默认在 aim-local-dev/ 目录）
+# 1. Initialize test environment (default in aim-local-dev/ directory)
 ./local-dev.sh
 
-# 2. 加载环境变量
+# 2. Load environment variables
 source aim-local-dev/env.sh          # Bash/Zsh/Sh
 source aim-local-dev/env.fish        # Fish
 
-# 3. 使用 aim 命令
+# 3. Use aim commands
 aim version
 aim provider list
 aim keys list
 
-# 4. 运行测试
+# 4. Run tests
 aim-local-dev/test.sh
 ```
 
-## 更新和重建
+## Updates and Rebuilding
 
-修改代码后，快速重建和更新二进制文件：
+Quickly rebuild and update binaries after modifying code:
 
 ```bash
-# 使用 rebuild 或 update 命令
+# Use rebuild or update command
 ./local-dev.sh rebuild
 
-# 更新后重新加载环境变量
+# Reload environment variables after update
 source aim-local-dev/env.sh
 
-# 验证更新
-aim version  # 查看 Built 时间
+# Verify update
+aim version  # Check Built time
 ```
 
-**rebuild/update 的智能检测：**
-- 如果已加载环境（`$AIM_HOME` 存在），自动更新到该环境
-- 否则更新到默认位置 `aim-local-dev/`
+**Smart detection for rebuild/update:**
+- If environment is loaded (`$AIM_HOME` exists), automatically update to that environment
+- Otherwise update to default location `aim-local-dev/`
 
-## 特点
+## Features
 
-- ✅ 同时支持 Bash/Zsh/Fish shell
-- ✅ 测试环境在项目目录下 (`aim-local-dev/`)
-- ✅ PATH 优先级最高，不影响系统安装
-- ✅ 完全隔离的 AIM_HOME、配置和缓存
-- ✅ 自动构建最新代码
-- ✅ 包含测试 API keys
-- ✅ 支持快速重建和更新
+- ✅ Supports Bash/Zsh/Fish shells simultaneously
+- ✅ Test environment in project directory (`aim-local-dev/`)
+- ✅ Highest PATH priority, doesn't affect system installation
+- ✅ Completely isolated AIM_HOME, configuration and cache
+- ✅ Automatically builds latest code
+- ✅ Includes test API keys
+- ✅ Supports quick rebuild and update
 
-## 使用自定义路径
+## Using Custom Paths
 
 ```bash
-# 指定其他路径
+# Specify other paths
 ./local-dev.sh ~/my-test
 ./local-dev.sh /tmp/aim-test
 
-# 加载自定义环境
+# Load custom environment
 source ~/my-test/env.sh
 
-# 更新（自动检测 $AIM_HOME）
+# Update (automatically detects $AIM_HOME)
 ./local-dev.sh rebuild
 ```
 
-## 开发工作流
+## Development Workflow
 
-典型的开发测试流程：
+Typical development and testing workflow:
 
 ```bash
-# 1. 初始化一次
+# 1. Initialize once
 ./local-dev.sh
 
-# 2. 加载环境
+# 2. Load environment
 source aim-local-dev/env.sh
 
-# 3. 修改代码
+# 3. Modify code
 vim internal/keys/editor.go
 
-# 4. 快速重建
+# 4. Quick rebuild
 ./local-dev.sh rebuild
 
-# 5. 重新加载环境
+# 5. Reload environment
 source aim-local-dev/env.sh
 
-# 6. 测试新功能
+# 6. Test new features
 aim keys edit deepseek
 
-# 继续开发循环...
+# Continue development cycle...
 ```
 
-## PATH 优先级
+## PATH Priority
 
-通过 `export PATH="$AIM_HOME/bin:$PATH"` 方式，测试环境的优先级高于系统安装：
+Through `export PATH="$AIM_HOME/bin:$PATH"`, the test environment has higher priority than system installation:
 
 ```bash
 source aim-local-dev/env.sh
 
-# 验证优先级
+# Verify priority
 which aim
-# 输出: /Users/dylan/code/aim/aim-local-dev/bin/aim
+# Output: /Users/dylan/code/aim/aim-local-dev/bin/aim
 
 echo $PATH | tr ':' '\n' | head -1
-# 输出: /Users/dylan/code/aim/aim-local-dev/bin
+# Output: /Users/dylan/code/aim/aim-local-dev/bin
 ```
 
-这样可以：
-- 测试环境的 aim/aix 优先于系统安装
-- 不影响系统全局安装
-- AIM_HOME 指向测试目录，配置和缓存完全隔离
+This allows:
+- Test environment's aim/aix takes priority over system installation
+- Doesn't affect global system installation
+- AIM_HOME points to test directory, configuration and cache are completely isolated
 
-## 配置 API Keys
+## Configuring API Keys
 
-### 方法 1：修改环境文件
+### Method 1: Modify Environment File
 
 ```bash
-# Bash/Zsh 用户
+# For Bash/Zsh users
 vim aim-local-dev/env.sh
 export DEEPSEEK_API_KEY="sk-your-real-key"
 
-# Fish 用户
+# For Fish users
 vim aim-local-dev/env.fish
 set -gx DEEPSEEK_API_KEY "sk-your-real-key"
 ```
 
-### 方法 2：环境变量覆盖
+### Method 2: Environment Variable Override
 
 ```bash
-# 先设置真实 key
+# First set real key
 export DEEPSEEK_API_KEY="sk-your-real-key"
 
-# 再加载环境（会保留已存在的 key）
+# Then load environment (will preserve existing key)
 source aim-local-dev/env.sh
 ```
 
-### 方法 3：使用 aim keys 命令
+### Method 3: Using aim keys Command
 
 ```bash
 source aim-local-dev/env.sh
 aim keys add deepseek
-# 按提示输入 key
+# Follow prompts to enter key
 ```
 
-## 测试场景
+## Testing Scenarios
 
-### 测试 Provider 管理
+### Testing Provider Management
 
 ```bash
 source aim-local-dev/env.sh
 
-# 列出所有 providers
+# List all providers
 aim provider list
 
-# 查看特定 provider 信息
+# View specific provider information
 aim provider info deepseek
 
-# 添加自定义 provider
+# Add custom provider
 aim provider add my-ai \
   --display-name "My AI" \
   --env-var MY_AI_KEY \
   --key-prefix "myai-"
 ```
 
-### 测试 Key 管理
+### Testing Key Management
 
 ```bash
 source aim-local-dev/env.sh
 
-# 列出所有 keys
+# List all keys
 aim keys list
 
-# 测试特定 provider 的 key
+# Test key for specific provider
 aim keys test deepseek
 
-# 测试所有已配置的 keys
+# Test all configured keys
 aim keys test
 
-# 使用编辑器编辑 key
+# Edit key using editor
 aim keys edit deepseek
 ```
 
-## 多环境测试
+## Multi-Environment Testing
 
-可以创建多个测试环境用于不同场景：
+Create multiple test environments for different scenarios:
 
 ```bash
-# 开发环境
+# Development environment
 ./local-dev.sh ~/aim-dev
 
-# 测试环境
+# Testing environment
 ./local-dev.sh ~/aim-test
 
-# 使用不同环境
-source ~/aim-dev/env.sh      # 开发
-source ~/aim-test/env.sh     # 测试
+# Use different environments
+source ~/aim-dev/env.sh      # Development
+source ~/aim-test/env.sh     # Testing
 ```
 
-## 清理
+## Cleanup
 
 ```bash
-# 删除测试环境
+# Delete test environment
 rm -rf aim-local-dev
 ```
 
-## 与系统安装隔离
+## Isolation from System Installation
 
 ```bash
-# 测试环境
+# Test environment
 source aim-local-dev/env.sh
 which aim              # aim-local-dev/bin/aim
 echo $AIM_HOME         # aim-local-dev
 
-# 新终端（未加载环境）
-which aim              # /usr/local/bin/aim (系统安装)
-echo $AIM_HOME         # (空或系统设置)
+# New terminal (environment not loaded)
+which aim              # /usr/local/bin/aim (system installation)
+echo $AIM_HOME         # (empty or system setting)
 ```
 
-## 故障排除
+## Troubleshooting
 
-### 找不到 aim 命令
+### aim Command Not Found
 
 ```bash
-# 确认已加载环境
+# Confirm environment is loaded
 source aim-local-dev/env.sh
 
-# 检查 PATH
+# Check PATH
 echo $PATH | grep local-dev
 
-# 检查二进制文件
+# Check binary files
 ls -la aim-local-dev/bin/
 ```
 
-### 代码修改后未生效
+### Code Changes Not Taking Effect
 
 ```bash
-# 重建并重新加载
+# Rebuild and reload
 ./local-dev.sh rebuild
 source aim-local-dev/env.sh
 
-# 验证版本
-aim version  # 检查 Built 时间
+# Verify version
+aim version  # Check Built time
 ```
 
-### 权限被拒绝
+### Permission Denied
 
 ```bash
-# 确保脚本可执行
+# Ensure scripts are executable
 chmod +x aim-local-dev/test.sh
 chmod +x aim-local-dev/bin/*
 ```
 
-### 重新初始化
+### Reinitialization
 
 ```bash
-# 脚本会询问是否重新初始化
+# Script will ask whether to reinitialize
 ./local-dev.sh
 
-# 或强制删除后重建
+# Or force delete and rebuild
 rm -rf aim-local-dev && ./local-dev.sh
 ```
 
-## 命令参考
+## Command Reference
 
 ```bash
-# 初始化
-./local-dev.sh                    # 默认位置 aim-local-dev/
-./local-dev.sh ~/custom-path      # 自定义位置
+# Initialization
+./local-dev.sh                    # Default location aim-local-dev/
+./local-dev.sh ~/custom-path      # Custom location
 
-# 更新
-./local-dev.sh rebuild            # 重建（自动检测环境）
-./local-dev.sh update             # 同 rebuild
+# Updates
+./local-dev.sh rebuild            # Rebuild (automatically detects environment)
+./local-dev.sh update             # Same as rebuild
 
-# 使用
+# Usage
 source aim-local-dev/env.sh       # Bash/Zsh
 source aim-local-dev/env.fish     # Fish
-aim-local-dev/test.sh             # 快速测试
-```
+aim-local-dev/test.sh             # Quick test

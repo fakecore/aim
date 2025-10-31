@@ -86,9 +86,9 @@ aim run codex --key another-key
 
 ## 📚 文档
 
-- **[CI/CD 完整指南](docs/cicd/CI_CD.md)** - 持续集成和部署的权威参考
-- **[本地开发环境设置](docs/development-guide/LOCAL_DEV.md)** - 本地开发环境配置指南
-- **[TUI 界面设计](docs/tui-interface/TUI_DESIGN.md)** - 终端用户界面设计文档
+- **[CI/CD 完整指南](docs/cicd/ci_cd_cn.md)** - 持续集成和部署的权威参考
+- **[本地开发环境设置](docs/development-guide/local_dev_cn.md)** - 本地开发环境配置指南
+- **[TUI 界面设计](docs/tui-interface/tui_design_cn.md)** - 终端用户界面设计文档
 
 ## 🎯 支持的提供商
 
@@ -151,7 +151,7 @@ source test/local-dev-setup/dev-setup.fish   # Fish
 
 ## 🤝 贡献
 
-我们欢迎贡献！请参阅我们的[开发指南](docs/development-guide/LOCAL_DEV.md)了解详情。
+我们欢迎贡献！请参阅我们的[开发指南](docs/development-guide/local_dev_cn.md)了解详情。
 
 1. **Fork 本仓库**
 2. **创建功能分支** (`git checkout -b feature/amazing-feature`)
@@ -168,7 +168,7 @@ source test/local-dev-setup/dev-setup.fish   # Fish
 
 - **问题反馈**：[GitHub Issues](https://github.com/fakecore/aim/issues)
 - **讨论区**：[GitHub Discussions](https://github.com/fakecore/aim/discussions)
-- **文档**：[docs/](docs/)
+- **文档**：[docs/](docs)
 
 <div align="center">
 

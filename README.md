@@ -8,7 +8,7 @@
 
 **A unified CLI tool for managing multiple AI tools and model providers**
 
-English | [简体中文](README_CN.md)
+English | [简体中文](readme_cn.md)
 
 </div>
 
@@ -85,9 +85,9 @@ aim run codex --key another-key
 
 ## 📚 Documentation
 
-- **[CI/CD Complete Guide](docs/cicd/CI_CD_EN.md)** - Continuous integration and deployment reference
-- **[Local Development Setup](docs/development-guide/LOCAL_DEV_EN.md)** - Local development environment configuration guide
-- **[TUI Interface Design](docs/tui-interface/TUI_DESIGN_EN.md)** - Terminal user interface design documentation
+- **[CI/CD Complete Guide](docs/cicd/ci_cd.md)** - Continuous integration and deployment reference
+- **[Local Development Setup](docs/development-guide/local_dev.md)** - Local development environment configuration guide
+- **[TUI Interface Design](docs/tui-interface/tui_design.md)** - Terminal user interface design documentation
 
 ## 🎯 Supported Providers
 
@@ -150,7 +150,7 @@ source test/local-dev-setup/dev-setup.fish   # Fish
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Development Guide](docs/development-guide/LOCAL_DEV_EN.md) for details.
+We welcome contributions! Please see our [Development Guide](docs/development-guide/local_dev.md) for details.
 
 1. **Fork this repository**
 2. **Create a feature branch** (`git checkout -b feature/amazing-feature`)
