@@ -1,81 +1,81 @@
-# AIM 项目 CI/CD 精简指南
+# AIM Project CI/CD Concise Guide
 
-本指南为 AIM 项目的单人开发者提供快速、实用的 CI/CD 操作指南。
+This guide provides a quick and practical CI/CD operation guide for solo developers of the AIM project.
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 环境检查
+### Environment Check
 ```bash
-# 检查基础环境
+# Check basic environment
 git config --list | grep -E "(user\.name|user\.email)"
 go version
 make help
 ```
 
-### 常用命令速查
+### Common Commands Quick Reference
 
-| 操作 | 命令 |
-|------|------|
-| 检查当前版本 | `make version` |
-| 创建 RC 版本 | `make rc` |
-| 创建正式版本 | `make release` |
-| 运行测试 | `make test` |
-| 代码检查 | `make check` |
-| 构建所有平台 | `make build-all` |
+| Operation | Command |
+|-----------|---------|
+| Check current version | `make version` |
+| Create RC version | `make rc` |
+| Create official release | `make release` |
+| Run tests | `make test` |
+| Code checks | `make check` |
+| Build for all platforms | `make build-all` |
 
-## 📦 版本发布流程
+## 📦 Version Release Process
 
-### 1. 修复发布 (Patch Release)
-用于向后兼容的问题修正。
+### 1. Patch Release
+Used for backward-compatible bug fixes.
 
 ```bash
-# 1. 创建 hotfix 分支
+# 1. Create hotfix branch
 git checkout -b hotfix/v0.1.0
 
-# 2. 修复问题并提交
+# 2. Fix issues and commit
 git add .
 git commit -m "fix: resolve crash when loading invalid config"
 
-# 3. 运行测试
+# 3. Run tests
 make test
 
-# 4. 合并到 main
+# 4. Merge to main
 git checkout main
 git merge --no-ff hotfix/v0.1.0
 
-# 5. 创建版本标签
+# 5. Create version tag
 git tag -a v0.1.0 -m "Release v0.1.0
 
 Bug fixes:
 - Fix crash when loading invalid config
 - Improve error handling for missing files"
 
-# 6. 推送标签触发自动发布
+# 6. Push tag to trigger automatic release
 git push origin v0.1.0
 
-# 7. 删除 hotfix 分支
+# 7. Delete hotfix branch
 git branch -d hotfix/v0.1.0
 ```
 
-### 2. 功能发布 (Minor Release)
-用于添加向后兼容的新功能。
+### 2. Minor Release
+Used for adding backward-compatible new features.
 
 ```bash
-# 1. 创建 release 分支
+# 1. Create release branch
 git checkout -b release/v0.2.0
 
-# 2. 更新版本信息和文档
-# ... 进行必要的更新 ...
+# 2. Update version information and documentation
+# ... make necessary updates ...
 
-# 3. 提交更改
+# 3. Commit changes
 git add .
 git commit -m "feat: prepare for v0.2.0 release"
 
-# 4. 创建 RC 版本（可选）
+# 4. Create RC version (optional)
 git tag -a v0.2.0-rc.1 -m "Release candidate v0.2.0-rc.1"
 git push origin v0.2.0-rc.1
 
-# 5. 测试 RC 版本后，创建正式版本
+# 5. After testing RC version, create official release
 git tag -a v0.2.0 -m "Release v0.2.0
 
 New features:
@@ -83,38 +83,38 @@ New features:
 - Add configuration validation
 - Add interactive setup wizard"
 
-# 6. 合并到 main
+# 6. Merge to main
 git checkout main
 git merge --no-ff release/v0.2.0
 
-# 7. 推送标签触发自动发布
+# 7. Push tag to trigger automatic release
 git push origin v0.2.0
 
-# 8. 删除 release 分支
+# 8. Delete release branch
 git branch -d release/v0.2.0
 ```
 
-### 3. 主要发布 (Major Release)
-用于包含不兼容变更的重要版本更新。
+### 3. Major Release
+Used for significant version updates that include incompatible changes.
 
 ```bash
-# 1. 创建 release 分支
+# 1. Create release branch
 git checkout -b release/v1.0.0
 
-# 2. 进行重大变更和文档更新
-# ... 进行代码修改和文档更新 ...
+# 2. Make major changes and update documentation
+# ... make code changes and documentation updates ...
 
-# 3. 提交更改
+# 3. Commit changes
 git add .
 git commit -m "feat!: prepare for v1.0.0 major release
 
 BREAKING CHANGE: Update CLI command structure"
 
-# 4. 创建 RC 版本
+# 4. Create RC version
 git tag -a v1.0.0-rc.1 -m "Release candidate v1.0.0-rc.1"
 git push origin v1.0.0-rc.1
 
-# 5. 测试后创建正式版本
+# 5. Create official release after testing
 git tag -a v1.0.0 -m "Release v1.0.0
 
 Major changes:
@@ -127,169 +127,169 @@ Breaking Changes:
 - Configuration format updated
 - Deprecated features removed"
 
-# 6. 合并到 main
+# 6. Merge to main
 git checkout main
 git merge --no-ff release/v1.0.0
 
-# 7. 推送标签触发自动发布
+# 7. Push tag to trigger automatic release
 git push origin v1.0.0
 
-# 8. 删除 release 分支
+# 8. Delete release branch
 git branch -d release/v1.0.0
 ```
 
-## 🔧 构建触发条件
+## 🔧 Build Trigger Conditions
 
-### 自动触发场景
+### Automatic Trigger Scenarios
 
-| 触发条件 | 工作流 | 执行时间 | 主要操作 |
-|---------|--------|----------|----------|
-| 推送到 main 分支 | CI | ~15 分钟 | 测试、检查、构建 |
-| 推送版本标签 (v*.*.*) | Release | ~30 分钟 | 多平台构建、创建 Release |
-| 推送 RC 标签 (v*.*.*-rc.*) | Pre-release | ~30 分钟 | 多平台构建、创建预发布 |
-| 创建/更新 PR | PR Check | ~15 分钟 | 测试、检查、变更分析 |
+| Trigger Condition | Workflow | Execution Time | Main Operations |
+|-------------------|----------|----------------|-----------------|
+| Push to main branch | CI | ~15 minutes | Tests, checks, build |
+| Push version tag (v*.*.*) | Release | ~30 minutes | Multi-platform build, create Release |
+| Push RC tag (v*.*.*-rc.*) | Pre-release | ~30 minutes | Multi-platform build, create pre-release |
+| Create/update PR | PR Check | ~15 minutes | Tests, checks, change analysis |
 
-### 避免不必要构建
+### Avoiding Unnecessary Builds
 
 ```bash
-# 1. 使用 Draft PR
+# 1. Use Draft PR
 gh pr create --draft --title "WIP: Feature" --body "Work in progress"
 
-# 2. 跳过 CI
+# 2. Skip CI
 git commit -m "docs: update README [ci skip]"
 
-# 3. 批量提交
+# 3. Batch commits
 git rebase -i HEAD~3
 ```
 
-## 📋 发布前检查清单
+## 📋 Pre-release Checklist
 
-### 代码质量
-- [ ] 所有代码检查通过 (`make check`)
-- [ ] 所有单元测试通过 (`make test`)
-- [ ] 测试覆盖率符合要求 (>80%)
-- [ ] 无安全漏洞
-- [ ] 代码格式符合规范
+### Code Quality
+- [ ] All code checks pass (`make check`)
+- [ ] All unit tests pass (`make test`)
+- [ ] Test coverage meets requirements (>80%)
+- [ ] No security vulnerabilities
+- [ ] Code formatting follows standards
 
-### 功能验证
-- [ ] 新功能按预期工作
-- [ ] 现有功能未受影响
-- [ ] 边界情况测试通过
-- [ ] 错误处理正确
-- [ ] 性能符合预期
+### Functionality Verification
+- [ ] New features work as expected
+- [ ] Existing features are not affected
+- [ ] Edge case tests pass
+- [ ] Error handling is correct
+- [ ] Performance meets expectations
 
-### 文档更新
-- [ ] README.md 更新
-- [ ] CHANGELOG.md 更新
-- [ ] API 文档更新（如需要）
-- [ ] 用户指南更新（如需要）
-- [ ] 迁移指南（如需要）
+### Documentation Updates
+- [ ] README.md updated
+- [ ] CHANGELOG.md updated
+- [ ] API documentation updated (if needed)
+- [ ] User guide updated (if needed)
+- [ ] Migration guide (if needed)
 
-## 🛠️ 常用命令参考
+## 🛠️ Common Commands Reference
 
-### Make 命令
+### Make Commands
 ```bash
-# 构建相关
-make build          # 构建当前平台
-make build-all      # 构建所有平台
-make clean          # 清理构建产物
+# Build related
+make build          # Build for current platform
+make build-all      # Build for all platforms
+make clean          # Clean build artifacts
 
-# 测试相关
-make test           # 运行测试
-make coverage       # 生成覆盖率报告
-make check          # 运行所有检查
+# Test related
+make test           # Run tests
+make coverage       # Generate coverage report
+make check          # Run all checks
 
-# 代码质量
-make fmt            # 格式化代码
-make vet            # 静态分析
-make lint           # 代码审查
+# Code quality
+make fmt            # Format code
+make vet            # Static analysis
+make lint           # Code review
 
-# 依赖管理
-make mod            # 更新依赖
+# Dependency management
+make mod            # Update dependencies
 
-# 开发环境
-make dev-setup      # 设置开发环境
-make dev-install    # 安装到开发环境
-make dev-test       # 测试开发环境
+# Development environment
+make dev-setup      # Set up development environment
+make dev-install    # Install to development environment
+make dev-test       # Test development environment
 ```
 
-## 🔍 故障排除
+## 🔍 Troubleshooting
 
-### 发布失败
+### Release Failures
 
-**问题**: GitHub Actions 工作流失败
+**Problem**: GitHub Actions workflow fails
 
-**解决方案**:
+**Solution**:
 ```bash
-# 1. 修复代码问题
-# ... 修复代码 ...
+# 1. Fix code issues
+# ... fix code ...
 
-# 2. 重新运行测试
+# 2. Rerun tests
 make test
 
-# 3. 删除失败的 Release（如果已创建）
-# 在 GitHub 页面上手动删除
+# 3. Delete failed Release (if created)
+# Manually delete on GitHub page
 
-# 4. 删除错误的标签
+# 4. Delete incorrect tag
 git tag -d v0.1.0
 git push origin :refs/tags/v0.1.0
 
-# 5. 重新创建标签
+# 5. Recreate tag
 git tag -a v0.1.0 -m "Release v0.1.0 (fixed)"
 git push origin v0.1.0
 ```
 
-### 版本号冲突
+### Version Number Conflicts
 
-**问题**: 版本号已存在
+**Problem**: Version number already exists
 
-**解决方案**:
+**Solution**:
 ```bash
-# 1. 列出所有标签
+# 1. List all tags
 git tag -l
 
-# 2. 删除错误的本地标签
+# 2. Delete incorrect local tag
 git tag -d v0.1.0
 
-# 3. 删除错误的远程标签
+# 3. Delete incorrect remote tag
 git push origin :refs/tags/v0.1.0
 
-# 4. 创建正确的标签
+# 4. Create correct tag
 git tag -a v0.1.2 -m "Release v0.1.2"
 git push origin v0.1.2
 ```
 
-### 构建产物不完整
+### Incomplete Build Artifacts
 
-**问题**: 某些平台的二进制文件缺失
+**Problem**: Binary files for some platforms are missing
 
-**解决方案**:
+**Solution**:
 ```bash
-# 1. 本地测试构建
+# 1. Test build locally
 make build-all VERSION=v0.1.0
 
-# 2. 检查构建产物
+# 2. Check build artifacts
 ls -la bin/
 
-# 3. 验证二进制文件
+# 3. Verify binary files
 ./bin/aim-linux-amd64 version
 ```
 
-## 📊 版本管理策略
+## 📊 Version Management Strategy
 
-### 版本号格式
-- **正式版本**: `MAJOR.MINOR.PATCH` (例如: `v0.1.0`, `v1.2.3`)
-- **预发布版本**: `MAJOR.MINOR.PATCH-rc.N` (例如: `v0.1.0-rc.1`)
+### Version Number Format
+- **Official Release**: `MAJOR.MINOR.PATCH` (e.g., `v0.1.0`, `v1.2.3`)
+- **Pre-release**: `MAJOR.MINOR.PATCH-rc.N` (e.g., `v0.1.0-rc.1`)
 
-### 版本号递增规则
-- **MAJOR**: 不兼容的 API 变更
-- **MINOR**: 向后兼容的功能新增
-- **PATCH**: 向后兼容的问题修正
+### Version Number Increment Rules
+- **MAJOR**: Incompatible API changes
+- **MINOR**: Backward-compatible feature additions
+- **PATCH**: Backward-compatible bug fixes
 
-### 分支策略
+### Branch Strategy
 ```mermaid
 graph TD
-    A[main] --> B[feature/功能名]
+    A[main] --> B[feature/feature-name]
     A --> C[release/vX.Y.Z]
     A --> D[hotfix/vX.Y.Z]
     B --> A
@@ -297,35 +297,35 @@ graph TD
     D --> A
 ```
 
-## 💡 最佳实践
+## 💡 Best Practices
 
-### 版本管理
-- 保持版本号递增，永远不要递减版本号
-- 使用语义化版本，严格遵循 SemVer 规范
-- 完成发布后立即创建标签
-- 编写清晰的发布说明，详细说明每个版本的变更
-- 尽量避免破坏性变更
+### Version Management
+- Keep version numbers incrementing, never decrement
+- Use semantic versioning, strictly follow SemVer specification
+- Create tags immediately after release completion
+- Write clear release notes detailing changes in each version
+- Avoid breaking changes whenever possible
 
-### 分支管理
-- 保持 main 分支稳定，只合并经过测试的代码
-- 功能分支应该短期存在并及时合并
-- 定期清理已合并的分支
-- 使用描述性分支名，清楚表达其用途
+### Branch Management
+- Keep main branch stable, only merge tested code
+- Feature branches should be short-lived and merged promptly
+- Regularly clean up merged branches
+- Use descriptive branch names that clearly express their purpose
 
-### 发布流程
-- 确保所有测试通过
-- 在不同平台上测试二进制文件
-- 确保文档与代码同步更新
-- 及时通知用户新版本发布
+### Release Process
+- Ensure all tests pass
+- Test binary files on different platforms
+- Ensure documentation is updated synchronously with code
+- Notify users of new releases promptly
 
-## 📚 相关文档
+## 📚 Related Documentation
 
-- [CI/CD 设计方案](AIM_CI_CD_DESIGN.md) - 详细的 CI/CD 设计方案
-- [版本管理策略](VERSION_MANAGEMENT_STRATEGY.md) - 完整的版本管理策略
-- [发布流程](RELEASE_PROCESS.md) - 详细的发布流程文档
-- [构建触发条件](BUILD_TRIGGERS.md) - 构建触发条件详解
-- [快速发布指南](QUICK_RELEASE_GUIDE.md) - 快速参考指南
+- [CI/CD Design Plan](AIM_CI_CD_DESIGN.md) - Detailed CI/CD design plan
+- [Version Management Strategy](VERSION_MANAGEMENT_STRATEGY.md) - Complete version management strategy
+- [Release Process](RELEASE_PROCESS.md) - Detailed release process documentation
+- [Build Trigger Conditions](BUILD_TRIGGERS.md) - Detailed explanation of build trigger conditions
+- [Quick Release Guide](QUICK_RELEASE_GUIDE.md) - Quick reference guide
 
 ---
 
-通过遵循本指南，AIM 项目的版本发布将更加规范、可靠和高效，同时保持单人开发的灵活性和简洁性。
+By following this guide, the AIM project's version releases will be more standardized, reliable, and efficient, while maintaining the flexibility and simplicity of solo development.

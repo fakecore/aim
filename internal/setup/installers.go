@@ -4,20 +4,119 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/fakecore/aim/internal/constants"
 )
 
+// ConfigFormat represents configuration format
+type ConfigFormat int
+
+const (
+	JSON ConfigFormat = iota
+	TOML
+)
+
+// BaseInstaller provides common functionality for tool installers
+type BaseInstaller struct{}
+
+// ConfigParser defines how to parse configuration data
+type ConfigParser interface {
+	Parse(data []byte, target *map[string]interface{}) error
+	Marshal(config interface{}) ([]byte, error)
+}
+
+// JSONParser implements JSON parsing
+type JSONParser struct{}
+
+func (p *JSONParser) Parse(data []byte, target *map[string]interface{}) error {
+	return json.Unmarshal(data, target)
+}
+
+func (p *JSONParser) Marshal(config interface{}) ([]byte, error) {
+	return json.MarshalIndent(config, "", "  ")
+}
+
+// TOMLParser implements TOML parsing
+type TOMLParser struct{}
+
+func (p *TOMLParser) Parse(data []byte, target *map[string]interface{}) error {
+	return toml.Unmarshal(data, target)
+}
+
+func (p *TOMLParser) Marshal(config interface{}) ([]byte, error) {
+	var buf bytes.Buffer
+	if err := toml.NewEncoder(&buf).Encode(config); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 // ClaudeCodeInstaller Claude Code installer
-type ClaudeCodeInstaller struct{}
+type ClaudeCodeInstaller struct {
+	BaseInstaller
+}
 
 func NewClaudeCodeInstaller() *ClaudeCodeInstaller {
 	return &ClaudeCodeInstaller{}
+}
+
+// checkManagedByAIM通用实现
+func (b *BaseInstaller) checkManagedByAIM(configPath string, parser ConfigParser) (bool, map[string]interface{}, error) {
+	// Check if config file exists
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		return false, nil, nil
+	}
+
+	// Read existing configuration
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return false, nil, fmt.Errorf("failed to read config file: %w", err)
+	}
+
+	// Parse configuration
+	var existingConfig map[string]interface{}
+	if err := parser.Parse(data, &existingConfig); err != nil {
+		return false, nil, fmt.Errorf("failed to parse config file: %w", err)
+	}
+
+	// Check if there's a managed_by_aim field
+	if managedByAIM, exists := existingConfig["managed_by_aim"]; exists {
+		if managedMap, ok := managedByAIM.(map[string]interface{}); ok {
+			// Check if there's backup information
+			if hasBackup, ok := managedMap["backup"].(bool); ok && hasBackup {
+				return true, existingConfig, nil
+			}
+		}
+	}
+
+	return false, existingConfig, nil
+}
+
+// installAIMManaged通用实现
+func (b *BaseInstaller) installAIMManaged(req *InstallRequest, configPath string, parser ConfigParser, convertConfig func(*InstallRequest) (interface{}, error)) error {
+	// Convert configuration
+	config, err := convertConfig(req)
+	if err != nil {
+		return fmt.Errorf("failed to convert config: %w", err)
+	}
+
+	// Serialize configuration
+	configData, err := parser.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	// Directly overwrite the config file
+	if err := os.WriteFile(configPath, configData, constants.ConfigFileMode); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	return nil
 }
 
 func (i *ClaudeCodeInstaller) Install(req *InstallRequest) error {
@@ -29,7 +128,7 @@ func (i *ClaudeCodeInstaller) Install(req *InstallRequest) error {
 
 	// Ensure config directory exists
 	configDir := filepath.Dir(configPath)
-	if err := os.MkdirAll(configDir, 0755); err != nil {
+	if err := os.MkdirAll(configDir, constants.ConfigDirMode); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
@@ -70,12 +169,12 @@ func (i *ClaudeCodeInstaller) Backup(req *InstallRequest) error {
 	}
 
 	// Copy file
-	data, err := ioutil.ReadFile(configPath)
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	if err := ioutil.WriteFile(backupPath, data, 0644); err != nil {
+	if err := os.WriteFile(backupPath, data, constants.ConfigFileMode); err != nil {
 		return fmt.Errorf("failed to write backup file: %w", err)
 	}
 
@@ -98,7 +197,7 @@ func (i *ClaudeCodeInstaller) ValidateConfig(path string) error {
 	}
 
 	// Try to parse JSON
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to read config file: %w", err)
 	}
@@ -150,7 +249,9 @@ func (i *ClaudeCodeInstaller) ConvertConfig(req *InstallRequest) (interface{}, e
 }
 
 // CodexInstaller Codex installer
-type CodexInstaller struct{}
+type CodexInstaller struct {
+	BaseInstaller
+}
 
 func NewCodexInstaller() *CodexInstaller {
 	return &CodexInstaller{}
@@ -165,7 +266,7 @@ func (i *CodexInstaller) Install(req *InstallRequest) error {
 
 	// Ensure config directory exists
 	configDir := filepath.Dir(configPath)
-	if err := os.MkdirAll(configDir, 0755); err != nil {
+	if err := os.MkdirAll(configDir, constants.ConfigDirMode); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
@@ -206,12 +307,12 @@ func (i *CodexInstaller) Backup(req *InstallRequest) error {
 	}
 
 	// Copy file
-	data, err := ioutil.ReadFile(configPath)
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	if err := ioutil.WriteFile(backupPath, data, 0644); err != nil {
+	if err := os.WriteFile(backupPath, data, constants.ConfigFileMode); err != nil {
 		return fmt.Errorf("failed to write backup file: %w", err)
 	}
 
@@ -224,7 +325,7 @@ func (i *CodexInstaller) GetConfigPath() (string, error) {
 		return "", fmt.Errorf("failed to get home directory: %w", err)
 	}
 
-	return filepath.Join(home, ".codex", "config.toml"), nil
+	return filepath.Join(home, ".codex", "constants.toml"), nil
 }
 
 func (i *CodexInstaller) ValidateConfig(path string) error {
@@ -234,7 +335,7 @@ func (i *CodexInstaller) ValidateConfig(path string) error {
 	}
 
 	// Try to parse TOML
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to read config file: %w", err)
 	}
@@ -281,56 +382,12 @@ func (i *CodexInstaller) ConvertConfig(req *InstallRequest) (interface{}, error)
 
 // checkManagedByAIM checks if the configuration is managed by AIM
 func (i *ClaudeCodeInstaller) checkManagedByAIM(configPath string) (bool, map[string]interface{}, error) {
-	// Check if config file exists
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		return false, nil, nil
-	}
-
-	// Read existing configuration
-	data, err := ioutil.ReadFile(configPath)
-	if err != nil {
-		return false, nil, fmt.Errorf("failed to read config file: %w", err)
-	}
-
-	// Parse JSON
-	var existingConfig map[string]interface{}
-	if err := json.Unmarshal(data, &existingConfig); err != nil {
-		return false, nil, fmt.Errorf("failed to parse config file: %w", err)
-	}
-
-	// Check if there's a managed_by_aim field
-	if managedByAIM, exists := existingConfig["managed_by_aim"]; exists {
-		if managedMap, ok := managedByAIM.(map[string]interface{}); ok {
-			// Check if there's backup information
-			if hasBackup, ok := managedMap["backup"].(bool); ok && hasBackup {
-				return true, existingConfig, nil
-			}
-		}
-	}
-
-	return false, existingConfig, nil
+	return i.BaseInstaller.checkManagedByAIM(configPath, &JSONParser{})
 }
 
 // installAIMManaged installs to existing AIM-managed configuration
 func (i *ClaudeCodeInstaller) installAIMManaged(req *InstallRequest, configPath string) error {
-	// Convert configuration
-	claudeConfig, err := i.ConvertConfig(req)
-	if err != nil {
-		return fmt.Errorf("failed to convert config: %w", err)
-	}
-
-	// Serialize configuration
-	configData, err := json.MarshalIndent(claudeConfig, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
-	}
-
-	// Directly overwrite the config file
-	if err := ioutil.WriteFile(configPath, configData, 0644); err != nil {
-		return fmt.Errorf("failed to write config file: %w", err)
-	}
-
-	return nil
+	return i.BaseInstaller.installAIMManaged(req, configPath, &JSONParser{}, i.ConvertConfig)
 }
 
 // installNonAIMManaged installs to non-AIM managed configuration
@@ -363,7 +420,7 @@ func (i *ClaudeCodeInstaller) installNonAIMManaged(req *InstallRequest, configPa
 	}
 
 	// Write configuration file
-	if err := ioutil.WriteFile(configPath, configData, 0644); err != nil {
+	if err := os.WriteFile(configPath, configData, constants.ConfigFileMode); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
@@ -385,7 +442,7 @@ func (i *ClaudeCodeInstaller) installNew(req *InstallRequest, configPath string)
 	}
 
 	// Write configuration file
-	if err := ioutil.WriteFile(configPath, configData, 0644); err != nil {
+	if err := os.WriteFile(configPath, configData, constants.ConfigFileMode); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
@@ -394,57 +451,12 @@ func (i *ClaudeCodeInstaller) installNew(req *InstallRequest, configPath string)
 
 // checkManagedByAIM checks if the configuration is managed by AIM
 func (i *CodexInstaller) checkManagedByAIM(configPath string) (bool, map[string]interface{}, error) {
-	// Check if config file exists
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		return false, nil, nil
-	}
-
-	// Read existing configuration
-	data, err := ioutil.ReadFile(configPath)
-	if err != nil {
-		return false, nil, fmt.Errorf("failed to read config file: %w", err)
-	}
-
-	// Parse TOML
-	var existingConfig map[string]interface{}
-	if err := toml.Unmarshal(data, &existingConfig); err != nil {
-		return false, nil, fmt.Errorf("failed to parse config file: %w", err)
-	}
-
-	// Check if there's a managed_by_aim field
-	if managedByAIM, exists := existingConfig["managed_by_aim"]; exists {
-		if managedMap, ok := managedByAIM.(map[string]interface{}); ok {
-			// Check if there's backup information
-			if hasBackup, ok := managedMap["backup"].(bool); ok && hasBackup {
-				return true, existingConfig, nil
-			}
-		}
-	}
-
-	return false, existingConfig, nil
+	return i.BaseInstaller.checkManagedByAIM(configPath, &TOMLParser{})
 }
 
 // installAIMManaged installs to existing AIM-managed configuration
 func (i *CodexInstaller) installAIMManaged(req *InstallRequest, configPath string) error {
-	// Convert configuration
-	codexConfig, err := i.ConvertConfig(req)
-	if err != nil {
-		return fmt.Errorf("failed to convert config: %w", err)
-	}
-
-	// Serialize configuration to TOML format
-	var buf bytes.Buffer
-	if err := toml.NewEncoder(&buf).Encode(codexConfig); err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
-	}
-	configData := buf.Bytes()
-
-	// Directly overwrite the config file
-	if err := ioutil.WriteFile(configPath, configData, 0644); err != nil {
-		return fmt.Errorf("failed to write config file: %w", err)
-	}
-
-	return nil
+	return i.BaseInstaller.installAIMManaged(req, configPath, &TOMLParser{}, i.ConvertConfig)
 }
 
 // installNonAIMManaged installs to non-AIM managed configuration
@@ -478,7 +490,7 @@ func (i *CodexInstaller) installNonAIMManaged(req *InstallRequest, configPath st
 	configData := buf.Bytes()
 
 	// Write configuration file
-	if err := ioutil.WriteFile(configPath, configData, 0644); err != nil {
+	if err := os.WriteFile(configPath, configData, constants.ConfigFileMode); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
@@ -501,7 +513,7 @@ func (i *CodexInstaller) installNew(req *InstallRequest, configPath string) erro
 	configData := buf.Bytes()
 
 	// Write configuration file
-	if err := ioutil.WriteFile(configPath, configData, 0644); err != nil {
+	if err := os.WriteFile(configPath, configData, constants.ConfigFileMode); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 

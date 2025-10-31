@@ -28,6 +28,12 @@ AIM (AI Model Manager) 是一个强大的命令行工具，旨在简化多个 AI
 
 ⚠️ **本项目目前处于设计阶段。**核心功能正在实现中。
 
+
+## 🐛 已知问题
+
+- **`aim setup install codex`** - 此命令仍在开发中，正在积极更新。目前不建议在生产环境中使用。
+- **`aim setup install cc`** - 此命令可用且功能正常，但请注意，一旦配置完成，可能会导致 `aim run cc` 失败。我们正在积极解决此问题。
+
 ## 💭 写在前面
 
 从事软件开发多年，这两年 AI 的发展速度一直超出我的想象。几年前从未想过 AI 会如此深刻地改变我们的开发方式和生活方式。
@@ -42,13 +48,13 @@ AIM (AI Model Manager) 是一个强大的命令行工具，旨在简化多个 AI
 
 **一行命令安装：**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --version v1.1.0-rc1|curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --version v1.1.0-rc1| bash
+curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash
 ```
 
 
 **用户目录安装（无需 sudo）：**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --version v1.1.0-rc1|curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --version v1.1.0-rc1| bash -s -- --user
+curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --user
 ```
 
 ### 基础用法
@@ -86,9 +92,9 @@ aim run codex --key another-key
 
 ## 📚 文档
 
-- **[CI/CD 完整指南](docs/cicd/CI_CD.md)** - 持续集成和部署的权威参考
-- **[本地开发环境设置](docs/development-guide/LOCAL_DEV.md)** - 本地开发环境配置指南
-- **[TUI 界面设计](docs/tui-interface/TUI_DESIGN.md)** - 终端用户界面设计文档
+- **[CI/CD 完整指南](docs/cicd/ci_cd_cn.md)** - 持续集成和部署的权威参考
+- **[本地开发环境设置](docs/development-guide/local_dev_cn.md)** - 本地开发环境配置指南
+- **[TUI 界面设计](docs/tui-interface/tui_design_cn.md)** - 终端用户界面设计文档
 
 ## 🎯 支持的提供商
 
@@ -151,7 +157,7 @@ source test/local-dev-setup/dev-setup.fish   # Fish
 
 ## 🤝 贡献
 
-我们欢迎贡献！请参阅我们的[开发指南](docs/development-guide/LOCAL_DEV.md)了解详情。
+我们欢迎贡献！请参阅我们的[开发指南](docs/development-guide/local_dev_cn.md)了解详情。
 
 1. **Fork 本仓库**
 2. **创建功能分支** (`git checkout -b feature/amazing-feature`)
@@ -168,7 +174,7 @@ source test/local-dev-setup/dev-setup.fish   # Fish
 
 - **问题反馈**：[GitHub Issues](https://github.com/fakecore/aim/issues)
 - **讨论区**：[GitHub Discussions](https://github.com/fakecore/aim/discussions)
-- **文档**：[docs/](docs/)
+- **文档**：[docs/](docs)
 
 <div align="center">
 

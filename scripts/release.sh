@@ -167,8 +167,14 @@ increment_version() {
 
         case "$type" in
             "rc")
-                # Always create RC based on current version (remove -dev if present)
-                echo "${major}.${minor}.${patch}-rc1"
+                if [[ -n "$rc" ]]; then
+                    # Increment RC number (v1.1.0-rc1 -> v1.1.0-rc2)
+                    local rc_num=${rc#-rc}
+                    echo "${major}.${minor}.${patch}-rc$((rc_num + 1))"
+                else
+                    # Create first RC from non-RC version (remove -dev if present)
+                    echo "${major}.${minor}.${patch}-rc1"
+                fi
                 ;;
             "release")
                 if [[ -n "$rc" ]]; then
@@ -224,7 +230,7 @@ push_to_remote() {
     fi
 
     print_info "Pushing commits to remote..."
-    git push origin main
+    git push origin
 
     print_info "Pushing tags to remote..."
     git push origin --tags
@@ -244,38 +250,6 @@ update_version_file() {
 
     print_info "Updating VERSION file to $version"
     echo "$version" > "$version_file"
-}
-
-# Update version in README files
-update_readme_files() {
-    local version=$1
-    local readme_md="$PROJECT_ROOT/README.md"
-    local readme_cn="$PROJECT_ROOT/README_CN.md"
-
-    if [[ "$DRY_RUN" == "true" ]]; then
-        print_info "DRY RUN: Would update version in README files to $version"
-        return
-    fi
-
-    # Update README.md
-    if [[ -f "$readme_md" ]]; then
-        print_info "Updating version in README.md"
-        # Update version in installation examples
-        sed -i.bak -E "s/VERSION=v[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?(-dev)?/VERSION=v$version/g" "$readme_md"
-        sed -i.bak -E "s/curl -fsSL https:\/\/raw.githubusercontent.com\/fakecore\/aim\/main\/scripts\/setup-tool.sh | bash -s -- --version v[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?(-dev)?/curl -fsSL https:\/\/raw.githubusercontent.com\/fakecore\/aim\/main\/scripts\/setup-tool.sh | bash -s -- --version v$version/g" "$readme_md"
-        sed -i.bak -E "s/https:\/\/github.com\/fakecore\/aim\/releases\/download\/v[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?(-dev)?/https:\/\/github.com\/fakecore\/aim\/releases\/download\/v$version/g" "$readme_md"
-        rm -f "$readme_md.bak"
-    fi
-
-    # Update README_CN.md
-    if [[ -f "$readme_cn" ]]; then
-        print_info "Updating version in README_CN.md"
-        # Update version in installation examples
-        sed -i.bak -E "s/VERSION=v[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?(-dev)?/VERSION=v$version/g" "$readme_cn"
-        sed -i.bak -E "s/curl -fsSL https:\/\/raw.githubusercontent.com\/fakecore\/aim\/main\/scripts\/setup-tool.sh | bash -s -- --version v[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?(-dev)?/curl -fsSL https:\/\/raw.githubusercontent.com\/fakecore\/aim\/main\/scripts\/setup-tool.sh | bash -s -- --version v$version/g" "$readme_cn"
-        sed -i.bak -E "s/https:\/\/github.com\/fakecore\/aim\/releases\/download\/v[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?(-dev)?/https:\/\/github.com\/fakecore\/aim\/releases\/download\/v$version/g" "$readme_cn"
-        rm -f "$readme_cn.bak"
-    fi
 }
 
 # Interactive confirmation
@@ -333,9 +307,6 @@ create_release() {
 
     # Update VERSION file
     update_version_file "$NEW_VERSION"
-
-    # Update README files
-    update_readme_files "$NEW_VERSION"
 
     # Commit changes
     if [[ "$DRY_RUN" == "true" ]]; then

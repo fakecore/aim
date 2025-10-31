@@ -6,6 +6,31 @@ import (
 	"strings"
 )
 
+var shellReplacer = strings.NewReplacer(
+	`"`, `\"`,
+	`$`, `\$`,
+	"`", "\\`",
+	`\`, `\\`,
+	`!`, `\!`,
+	`&`, `\&`,
+	`|`, `\|`,
+	`(`, `\(`,
+	`)`, `\)`,
+	`[`, `\[`,
+	`]`, `\]`,
+	`{`, `\{`,
+	`}`, `\}`,
+	`;`, `\;`,
+	`<`, `\<`,
+	`>`, `\>`,
+	` `, `\ `,
+)
+
+// EscapeShellValue escapes special characters in shell values
+func EscapeShellValue(value string) string {
+	return shellReplacer.Replace(value)
+}
+
 // ZshFormatter Zsh environment variable formatter
 type ZshFormatter struct{}
 
@@ -21,11 +46,7 @@ func (f *ZshFormatter) FormatEnv(result *SetupResult) string {
 	var output strings.Builder
 
 	for key, value := range result.EnvVars {
-		// Escape special characters
-		escapedValue := strings.ReplaceAll(value, `"`, `\"`)
-		escapedValue = strings.ReplaceAll(escapedValue, `$`, `\$`)
-		escapedValue = strings.ReplaceAll(escapedValue, "`", "\\`")
-
+		escapedValue := EscapeShellValue(value)
 		output.WriteString(fmt.Sprintf("export %s=\"%s\"\n", key, escapedValue))
 	}
 
@@ -47,11 +68,7 @@ func (f *BashFormatter) FormatEnv(result *SetupResult) string {
 	var output strings.Builder
 
 	for key, value := range result.EnvVars {
-		// Escape special characters
-		escapedValue := strings.ReplaceAll(value, `"`, `\"`)
-		escapedValue = strings.ReplaceAll(escapedValue, `$`, `\$`)
-		escapedValue = strings.ReplaceAll(escapedValue, "`", "\\`")
-
+		escapedValue := EscapeShellValue(value)
 		output.WriteString(fmt.Sprintf("export %s=\"%s\"\n", key, escapedValue))
 	}
 
@@ -220,7 +237,7 @@ func (f *SimpleCommandFormatter) FormatCommand(result *SetupResult) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	
+
 	// The last part is the actual command
 	return parts[len(parts)-1]
 }

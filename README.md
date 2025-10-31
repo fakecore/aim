@@ -8,7 +8,7 @@
 
 **A unified CLI tool for managing multiple AI tools and model providers**
 
-English | [简体中文](README_CN.md)
+English | [简体中文](readme_cn.md)
 
 </div>
 
@@ -28,6 +28,12 @@ AIM (AI Model Manager) is a powerful command-line tool designed to simplify the 
 
 ⚠️ **This project is currently in the design phase.** Core functionality is being implemented.
 
+
+## 🐛 Known Issues
+
+- **`aim setup install codex`** - This command is still under development and actively being updated. Not recommended for production use at this time.
+- **`aim setup install cc`** - This command is available and functional, but please note that once configured, it may cause `aim run cc` to fail. We are actively working on resolving this issue.
+
 ## 💭 Foreword
 
 After many years in software development, the pace of AI development in recent years has consistently exceeded my imagination. I never thought years ago that AI would so profoundly change our development methods and lifestyles.
@@ -42,12 +48,12 @@ Welcome to experience this tool completed through human "manual labor" and AI "m
 
 **One-line install:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --version v1.1.0-rc1|curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --version v1.1.0-rc1
+curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash
 ```
 
 **User installation (no sudo):**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --version v1.1.0-rc1|curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --version v1.1.0-rc1 --user
+curl -fsSL https://raw.githubusercontent.com/fakecore/aim/main/scripts/setup-tool.sh | bash -s -- --user
 ```
 
 ### Basic Usage
@@ -85,9 +91,9 @@ aim run codex --key another-key
 
 ## 📚 Documentation
 
-- **[CI/CD Complete Guide](docs/cicd/CI_CD_EN.md)** - Continuous integration and deployment reference
-- **[Local Development Setup](docs/development-guide/LOCAL_DEV_EN.md)** - Local development environment configuration guide
-- **[TUI Interface Design](docs/tui-interface/TUI_DESIGN_EN.md)** - Terminal user interface design documentation
+- **[CI/CD Complete Guide](docs/cicd/ci_cd.md)** - Continuous integration and deployment reference
+- **[Local Development Setup](docs/development-guide/local_dev.md)** - Local development environment configuration guide
+- **[TUI Interface Design](docs/tui-interface/tui_design.md)** - Terminal user interface design documentation
 
 ## 🎯 Supported Providers
 
@@ -150,7 +156,7 @@ source test/local-dev-setup/dev-setup.fish   # Fish
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Development Guide](docs/development-guide/LOCAL_DEV_EN.md) for details.
+We welcome contributions! Please see our [Development Guide](docs/development-guide/local_dev.md) for details.
 
 1. **Fork this repository**
 2. **Create a feature branch** (`git checkout -b feature/amazing-feature`)

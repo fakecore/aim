@@ -3,6 +3,8 @@ package provider
 import (
 	"fmt"
 	"strings"
+
+	"github.com/fakecore/aim/internal/constants"
 )
 
 // BuiltinProviderInfo represents builtin provider information with multiple endpoints
@@ -48,7 +50,7 @@ var builtinProviders = map[string]BuiltinProviderInfo{
 					"claude-code": {
 						BaseURL: "https://api.deepseek.com/anthropic",
 						Model:   "deepseek-chat",
-						Timeout: 60000,
+						Timeout: int(constants.DefaultTimeoutMS),
 						Env: map[string]string{
 							"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 						},
@@ -75,9 +77,9 @@ var builtinProviders = map[string]BuiltinProviderInfo{
 				Description: "Default configuration",
 				Tools: map[string]ToolConfig{
 					"claude-code": {
-						BaseURL: "https://api.moonshot.cn/v1/anthropic",
+						BaseURL: "https://api.moonshot.cn/anthropic",
 						Model:   "kimi-k2-turbo-preview",
-						Timeout: 60000,
+						Timeout: int(constants.DefaultTimeoutMS),
 						Env: map[string]string{
 							"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 						},
@@ -107,7 +109,7 @@ var builtinProviders = map[string]BuiltinProviderInfo{
 					"claude-code": {
 						BaseURL: "https://open.bigmodel.cn/api/anthropic",
 						Model:   "glm-4.6",
-						Timeout: 3000000,
+						Timeout: int(constants.GLMTimeout.Milliseconds()),
 						Env: map[string]string{
 							"ANTHROPIC_DEFAULT_HAIKU_MODEL":            "glm-4.5-air",
 							"ANTHROPIC_DEFAULT_SONNET_MODEL":           "glm-4.6",
@@ -132,7 +134,7 @@ var builtinProviders = map[string]BuiltinProviderInfo{
 					"claude-code": {
 						BaseURL: "https://open.bigmodel.cn/api/anthropic",
 						Model:   "glm-4.6",
-						Timeout: 3000000,
+						Timeout: int(constants.GLMTimeout.Milliseconds()),
 						Env: map[string]string{
 							"ANTHROPIC_DEFAULT_HAIKU_MODEL":            "glm-4.5-air",
 							"ANTHROPIC_DEFAULT_SONNET_MODEL":           "glm-4.6",
@@ -143,7 +145,7 @@ var builtinProviders = map[string]BuiltinProviderInfo{
 					"codex": {
 						BaseURL:    "https://open.bigmodel.cn/api/coding/paas/v4",
 						Model:      "glm-4.6",
-						Timeout:    300000,
+						Timeout:    int(constants.GLMCodingTimeout.Milliseconds()),
 						EnvKeyName: "GLM_API_KEY",
 					},
 				},
@@ -164,7 +166,7 @@ var builtinProviders = map[string]BuiltinProviderInfo{
 					"claude-code": {
 						BaseURL: "https://dashscope.aliyuncs.com/api/v2/apps/claude-code-proxy",
 						Model:   "qwen3-max",
-						Timeout: 60000,
+						Timeout: int(constants.DefaultTimeoutMS),
 						Env: map[string]string{
 							"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 						},

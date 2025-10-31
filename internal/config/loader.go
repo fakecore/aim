@@ -52,18 +52,18 @@ func (l *Loader) GetLocalPath() string {
 
 // Load loads and merges configuration from all sources
 func (l *Loader) Load() (*Config, error) {
-	// 1. Start with default configuration
-	cfg := DefaultConfig()
-
-	// 2. Load global configuration
+	// 1. Load global configuration (this should be the main config file)
 	global, err := l.loadGlobal()
-	if err == nil {
-		cfg = l.mergeConfigs(cfg, global)
-	} else if !os.IsNotExist(err) {
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("global configuration file not found at %s. Please run 'aim config init' to create it", l.globalPath)
+		}
 		return nil, fmt.Errorf("failed to load global config: %w", err)
 	}
 
-	// 3. Load local/project configuration
+	cfg := global
+
+	// 2. Load local/project configuration (if exists)
 	local, err := l.loadLocal()
 	if err == nil {
 		cfg = l.mergeConfigs(cfg, local)
@@ -71,13 +71,13 @@ func (l *Loader) Load() (*Config, error) {
 		return nil, fmt.Errorf("failed to load local config: %w", err)
 	}
 
-	// 4. Apply environment variable overrides
+	// 3. Apply environment variable overrides
 	cfg = l.applyEnvOverrides(cfg)
 
-	// 5. Expand environment variable references in config
+	// 4. Expand environment variable references in config
 	cfg = l.expandEnvVars(cfg)
 
-	// 6. Validate final configuration
+	// 5. Validate final configuration
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}
@@ -192,11 +192,16 @@ func (l *Loader) InitGlobal() error {
 // InitGlobalSilent initializes the global configuration file without checking if it exists
 // This is used for automatic initialization
 func (l *Loader) InitGlobalSilent() error {
-	// Create default v2.0 config
+	// Start with base configuration from default.yaml
 	cfg := DefaultConfig()
+	// Add any additional builtin providers/tools using merge logic (won't override existing ones)
 	cfg = l.addBuiltinProviders(cfg)
-	cfg = l.addBuiltinTools(cfg)
-	cfg = l.addBuiltinAliases(cfg)
+
+	var err error
+	cfg, err = l.addBuiltinTools(cfg)
+	if err != nil {
+		return err
+	}
 
 	return l.SaveGlobal(cfg)
 }
@@ -215,21 +220,23 @@ func (l *Loader) InitLocal() error {
 		return fmt.Errorf("local config already exists at %s", localPath)
 	}
 
-	// Create minimal local config
+	// Create minimal local config (local configs should be minimal by design)
 	cfg := &Config{
 		Version: "1.0",
 		Settings: Settings{
 			DefaultProvider: "deepseek",
 		},
-		Keys:    make(map[string]*Key),
-		Tools:   make(map[string]*ToolConfig),
+		Keys:    make(map[string]*Key),        // Local config starts with empty keys
+		Tools:   make(map[string]*ToolConfig), // Local config starts with empty tools
 		Aliases: make(map[string]string),
 	}
 
-	// Add built-in tools and providers
+	// Add built-in tools and providers from default config (for reference, but with minimal profiles)
 	cfg = l.addBuiltinProviders(cfg)
-	cfg = l.addBuiltinTools(cfg)
-	cfg = l.addBuiltinAliases(cfg)
+	cfg, err = l.addBuiltinTools(cfg)
+	if err != nil {
+		return err
+	}
 
 	return l.SaveLocal(cfg)
 }
@@ -373,7 +380,7 @@ func (l *Loader) expandEnvVars(cfg *Config) *Config {
 	return &result
 }
 
-// addBuiltinProviders adds built-in provider configurations
+// addBuiltinProviders adds built-in provider configurations using merge logic
 // This adds OpenAI-compatible API endpoints for use with codex, aider, and other OpenAI-compatible tools
 func (l *Loader) addBuiltinProviders(cfg *Config) *Config {
 	if cfg.Providers == nil {
@@ -415,10 +422,13 @@ func (l *Loader) addBuiltinProviders(cfg *Config) *Config {
 				configName = providerName + endpoint.Suffix
 			}
 
-			cfg.Providers[configName] = &Provider{
-				BaseURL: toolCfg.BaseURL,
-				Model:   toolCfg.Model,
-				Timeout: toolCfg.Timeout,
+			// Merge logic: only add if provider doesn't already exist
+			if _, exists := cfg.Providers[configName]; !exists {
+				cfg.Providers[configName] = &Provider{
+					BaseURL: toolCfg.BaseURL,
+					Model:   toolCfg.Model,
+					Timeout: toolCfg.Timeout,
+				}
 			}
 		}
 	}
@@ -426,40 +436,40 @@ func (l *Loader) addBuiltinProviders(cfg *Config) *Config {
 	return cfg
 }
 
-// addBuiltinTools adds built-in tool configurations with proper profiles
-func (l *Loader) addBuiltinTools(cfg *Config) *Config {
+// addBuiltinTools adds built-in tool configurations using merge logic
+// This is primarily used for InitLocal() where we need minimal tool references
+func (l *Loader) addBuiltinTools(cfg *Config) (*Config, error) {
 	if cfg.Tools == nil {
 		cfg.Tools = make(map[string]*ToolConfig)
 	}
 
-	// Load default tool configurations from embedded default config
-	defaultTools := l.loadDefaultTools()
+	// For InitLocal: if no tools exist, add basic tool references from default config
+	// For InitGlobalSilent: this won't add anything since DefaultConfig() already loaded complete tools
+	if len(cfg.Tools) == 0 {
+		// Load default tool configurations from embedded default config
+		defaultTools, err := l.loadDefaultTools()
+		if err != nil {
+			return nil, err
+		}
 
-	// Merge default tools with existing configuration
-	for toolName, defaultTool := range defaultTools {
-		// If tool already exists, preserve it but merge with default
-		if existingTool, exists := cfg.Tools[toolName]; exists {
-			// Merge existing tool with default tool
-			mergedTool := l.mergeToolConfig(existingTool, defaultTool)
-			cfg.Tools[toolName] = mergedTool
-		} else {
-			// Add new tool from defaults
+		// Add basic tool references (minimal versions)
+		for toolName, defaultTool := range defaultTools {
 			cfg.Tools[toolName] = defaultTool
 		}
 	}
 
-	return cfg
+	return cfg, nil
 }
 
 // loadDefaultTools loads tool configurations from embedded default config
-func (l *Loader) loadDefaultTools() map[string]*ToolConfig {
+func (l *Loader) loadDefaultTools() (map[string]*ToolConfig, error) {
 	// Use embedded config data directly
 	var defaultConfig Config
 	if err := yaml.Unmarshal(configs.DefaultConfigData, &defaultConfig); err != nil {
-		panic(fmt.Sprintf("Failed to unmarshal embedded default config: %v", err))
+		return nil, fmt.Errorf("failed to unmarshal embedded default config: %w", err)
 	}
 
-	return defaultConfig.Tools
+	return defaultConfig.Tools, nil
 }
 
 // mergeToolConfig merges existing tool configuration with default tool configuration
@@ -498,12 +508,45 @@ func (l *Loader) mergeToolConfig(existing, defaultTool *ToolConfig) *ToolConfig 
 	return &merged
 }
 
-// addBuiltinAliases adds built-in aliases
-// DISABLED: Alias functionality temporarily disabled
-func (l *Loader) addBuiltinAliases(cfg *Config) *Config {
-	// Temporarily disable adding built-in aliases
-	return cfg
+// mergeToolConfigMinimal merges existing tool configuration with minimal tool configuration
+func (l *Loader) mergeToolConfigMinimal(existing, minimalTool *ToolConfig) *ToolConfig {
+	merged := *existing // Copy existing tool
 
+	// Keep existing profiles, don't merge with minimal (empty) profiles
+	if merged.Profiles == nil {
+		merged.Profiles = make(map[string]*ToolProfile)
+	}
+
+	// Use minimal field mapping if existing has none
+	if len(merged.FieldMapping) == 0 && minimalTool.FieldMapping != nil {
+		merged.FieldMapping = make(map[string]string)
+		for k, v := range minimalTool.FieldMapping {
+			merged.FieldMapping[k] = v
+		}
+	}
+
+	// Use minimal defaults if existing has none
+	if merged.Defaults == nil && minimalTool.Defaults != nil {
+		merged.Defaults = &ToolDefaults{
+			Timeout: minimalTool.Defaults.Timeout,
+		}
+		if minimalTool.Defaults.Env != nil {
+			merged.Defaults.Env = make(map[string]string)
+			for k, v := range minimalTool.Defaults.Env {
+				merged.Defaults.Env[k] = v
+			}
+		}
+	}
+
+	// Use minimal command and enabled settings if not set
+	if merged.Command == "" {
+		merged.Command = minimalTool.Command
+	}
+	if !merged.Enabled {
+		merged.Enabled = minimalTool.Enabled
+	}
+
+	return &merged
 }
 
 // copyStringMap creates a deep copy of a string map
