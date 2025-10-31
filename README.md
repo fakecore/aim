@@ -28,6 +28,12 @@ AIM (AI Model Manager) is a powerful command-line tool designed to simplify the 
 
 ⚠️ **This project is currently in the design phase.** Core functionality is being implemented.
 
+
+## 🐛 Known Issues
+
+- **`aim setup install codex`** - This command is still under development and actively being updated. Not recommended for production use at this time.
+- **`aim setup install cc`** - This command is available and functional, but please note that once configured, it may cause `aim run cc` to fail. We are actively working on resolving this issue.
+
 ## 💭 Foreword
 
 After many years in software development, the pace of AI development in recent years has consistently exceeded my imagination. I never thought years ago that AI would so profoundly change our development methods and lifestyles.
