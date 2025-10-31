@@ -230,7 +230,7 @@ push_to_remote() {
     fi
 
     print_info "Pushing commits to remote..."
-    git push origin main
+    git push origin
 
     print_info "Pushing tags to remote..."
     git push origin --tags
