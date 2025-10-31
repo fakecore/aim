@@ -75,7 +75,7 @@ var builtinProviders = map[string]BuiltinProviderInfo{
 				Description: "Default configuration",
 				Tools: map[string]ToolConfig{
 					"claude-code": {
-						BaseURL: "https://api.moonshot.cn/v1/anthropic",
+						BaseURL: "https://api.moonshot.cn/anthropic",
 						Model:   "kimi-k2-turbo-preview",
 						Timeout: 60000,
 						Env: map[string]string{

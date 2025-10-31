@@ -10,6 +10,8 @@ settings:
   default_provider: deepseek # Default provider
   timeout: 60000 # Default timeout (milliseconds)
 
+keys:
+
 # Global Provider Configuration (OpenAI Compatible Endpoints)
 providers:
   deepseek:
@@ -36,28 +38,6 @@ providers:
     base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
     model: qwen-plus
     timeout: 60000
-
-# API Key Management
-keys:
-  deepseek-key:
-    provider: deepseek
-    key: ${DEEPSEEK_API_KEY}
-    description: "DeepSeek API Key"
-
-  glm-key:
-    provider: glm
-    key: ${GLM_API_KEY}
-    description: "GLM API Key"
-
-  kimi-key:
-    provider: kimi
-    key: ${KIMI_API_KEY}
-    description: "KIMI API Key"
-
-  qwen-key:
-    provider: qwen
-    key: ${QWEN_API_KEY}
-    description: "Qwen API Key"
 
 # Tool Configuration
 tools:

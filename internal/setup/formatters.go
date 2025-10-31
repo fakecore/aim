@@ -220,7 +220,7 @@ func (f *SimpleCommandFormatter) FormatCommand(result *SetupResult) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	
+
 	// The last part is the actual command
 	return parts[len(parts)-1]
 }

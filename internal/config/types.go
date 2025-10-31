@@ -1,6 +1,11 @@
 package config
 
-import "time"
+import (
+	"time"
+
+	"github.com/fakecore/aim/configs"
+	"gopkg.in/yaml.v3"
+)
 
 // Config represents the complete v1.0 configuration structure
 type Config struct {
@@ -38,11 +43,11 @@ type Provider struct {
 
 // ToolProfile represents a tool-specific provider configuration
 type ToolProfile struct {
-	Provider    string            `yaml:"provider"`
-	BaseURL     string            `yaml:"base_url,omitempty"`
-	Model       string            `yaml:"model,omitempty"`
-	Timeout     int               `yaml:"timeout,omitempty"`
-	Env         map[string]string `yaml:"env,omitempty"`
+	Provider     string            `yaml:"provider"`
+	BaseURL      string            `yaml:"base_url,omitempty"`
+	Model        string            `yaml:"model,omitempty"`
+	Timeout      int               `yaml:"timeout,omitempty"`
+	Env          map[string]string `yaml:"env,omitempty"`
 	FieldMapping map[string]string `yaml:"field_mapping,omitempty"`
 }
 
@@ -54,19 +59,19 @@ type ToolDefaults struct {
 
 // ToolConfig represents a tool configuration
 type ToolConfig struct {
-	Command      string                    `yaml:"command"`
-	Enabled      bool                      `yaml:"enabled,omitempty"`
-	Defaults     *ToolDefaults             `yaml:"defaults,omitempty"`
-	FieldMapping map[string]string         `yaml:"field_mapping,omitempty"`
-	Profiles     map[string]*ToolProfile   `yaml:"profiles"`
+	Command      string                  `yaml:"command"`
+	Enabled      bool                    `yaml:"enabled,omitempty"`
+	Defaults     *ToolDefaults           `yaml:"defaults,omitempty"`
+	FieldMapping map[string]string       `yaml:"field_mapping,omitempty"`
+	Profiles     map[string]*ToolProfile `yaml:"profiles"`
 }
 
 // RuntimeConfig represents the final resolved configuration at runtime
 type RuntimeConfig struct {
 	Tool     string
 	Key      string
-	Profile  string            // Profile name used
-	Provider string            // Actual provider name that the profile points to
+	Profile  string // Profile name used
+	Provider string // Actual provider name that the profile points to
 	APIKey   string
 	BaseURL  string
 	Model    string
@@ -76,19 +81,24 @@ type RuntimeConfig struct {
 
 // DefaultConfig returns the default v1.0 configuration
 func DefaultConfig() *Config {
-	return &Config{
-		Version: "1.0",
-		Settings: Settings{
-			DefaultTool:     "claude-code",
-			DefaultProvider: "deepseek",
-			Timeout:         60000,
-			Language:        "en",
-		},
-		Keys:      make(map[string]*Key),
-		Providers: make(map[string]*Provider),
-		Tools:     make(map[string]*ToolConfig),
-		Aliases:   make(map[string]string),
+	var cfg Config
+	if err := yaml.Unmarshal(configs.DefaultConfigData, &cfg); err != nil {
+		// Fallback to minimal config if default YAML fails to load
+		return &Config{
+			Version: "1.0",
+			Settings: Settings{
+				DefaultTool:     "claude-code",
+				DefaultProvider: "deepseek",
+				Timeout:         60000,
+				Language:        "en",
+			},
+			Keys:      make(map[string]*Key),
+			Providers: make(map[string]*Provider),
+			Tools:     make(map[string]*ToolConfig),
+			Aliases:   make(map[string]string),
+		}
 	}
+	return &cfg
 }
 
 // Validate validates the v1.0 configuration
@@ -111,10 +121,10 @@ func (c *Config) ResolveAlias(name string) string {
 
 	// Original alias resolution code (disabled):
 	/*
-	if alias, ok := c.Aliases[name]; ok {
-		return alias
-	}
-	return name
+		if alias, ok := c.Aliases[name]; ok {
+			return alias
+		}
+		return name
 	*/
 }
 
