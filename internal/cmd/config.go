@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 
 	"github.com/fakecore/aim/internal/config"
 	"github.com/spf13/cobra"
@@ -173,7 +174,7 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 				fmt.Printf("    Enabled: true\n")
 			}
 			if len(tool.Profiles) > 0 {
-				fmt.Printf("    Profiles: %s\n", getProfileList(tool.Profiles))
+				fmt.Printf("    Profiles: %s\n", config.GetProfileList(tool.Profiles))
 				// Show detailed profile information
 				for profileName, profile := range tool.Profiles {
 					fmt.Printf("      %s:\n", profileName)
@@ -235,8 +236,10 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 		case "default-key":
 			cfg.Settings.DefaultKey = value
 		case "timeout":
-			// TODO: Parse int
-			return
+			if timeout, err := strconv.Atoi(value); err == nil {
+				cfg.Settings.Timeout = timeout
+			}
+			// If invalid, keep the existing value (silently ignore)
 		case "language":
 			cfg.Settings.Language = value
 		default:
@@ -383,23 +386,3 @@ func runConfigEdit(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// getProfileList returns a comma-separated list of profile names
-func getProfileList(profiles map[string]*config.ToolProfile) string {
-	var names []string
-	for name := range profiles {
-		names = append(names, name)
-	}
-
-	if len(names) == 1 {
-		return names[0]
-	}
-
-	result := ""
-	for i, name := range names {
-		if i > 0 {
-			result += ", "
-		}
-		result += name
-	}
-	return result
-}

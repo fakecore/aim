@@ -196,7 +196,12 @@ func (l *Loader) InitGlobalSilent() error {
 	cfg := DefaultConfig()
 	// Add any additional builtin providers/tools using merge logic (won't override existing ones)
 	cfg = l.addBuiltinProviders(cfg)
-	cfg = l.addBuiltinTools(cfg)
+
+	var err error
+	cfg, err = l.addBuiltinTools(cfg)
+	if err != nil {
+		return err
+	}
 
 	return l.SaveGlobal(cfg)
 }
@@ -228,7 +233,10 @@ func (l *Loader) InitLocal() error {
 
 	// Add built-in tools and providers from default config (for reference, but with minimal profiles)
 	cfg = l.addBuiltinProviders(cfg)
-	cfg = l.addBuiltinTools(cfg)
+	cfg, err = l.addBuiltinTools(cfg)
+	if err != nil {
+		return err
+	}
 
 	return l.SaveLocal(cfg)
 }
@@ -430,7 +438,7 @@ func (l *Loader) addBuiltinProviders(cfg *Config) *Config {
 
 // addBuiltinTools adds built-in tool configurations using merge logic
 // This is primarily used for InitLocal() where we need minimal tool references
-func (l *Loader) addBuiltinTools(cfg *Config) *Config {
+func (l *Loader) addBuiltinTools(cfg *Config) (*Config, error) {
 	if cfg.Tools == nil {
 		cfg.Tools = make(map[string]*ToolConfig)
 	}
@@ -439,7 +447,10 @@ func (l *Loader) addBuiltinTools(cfg *Config) *Config {
 	// For InitGlobalSilent: this won't add anything since DefaultConfig() already loaded complete tools
 	if len(cfg.Tools) == 0 {
 		// Load default tool configurations from embedded default config
-		defaultTools := l.loadDefaultTools()
+		defaultTools, err := l.loadDefaultTools()
+		if err != nil {
+			return nil, err
+		}
 
 		// Add basic tool references (minimal versions)
 		for toolName, defaultTool := range defaultTools {
@@ -447,18 +458,18 @@ func (l *Loader) addBuiltinTools(cfg *Config) *Config {
 		}
 	}
 
-	return cfg
+	return cfg, nil
 }
 
 // loadDefaultTools loads tool configurations from embedded default config
-func (l *Loader) loadDefaultTools() map[string]*ToolConfig {
+func (l *Loader) loadDefaultTools() (map[string]*ToolConfig, error) {
 	// Use embedded config data directly
 	var defaultConfig Config
 	if err := yaml.Unmarshal(configs.DefaultConfigData, &defaultConfig); err != nil {
-		panic(fmt.Sprintf("Failed to unmarshal embedded default config: %v", err))
+		return nil, fmt.Errorf("failed to unmarshal embedded default config: %w", err)
 	}
 
-	return defaultConfig.Tools
+	return defaultConfig.Tools, nil
 }
 
 // mergeToolConfig merges existing tool configuration with default tool configuration

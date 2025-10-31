@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/fakecore/aim/internal/config"
+	"github.com/fakecore/aim/internal/constants"
 	"github.com/fakecore/aim/internal/tool"
 )
 
@@ -434,17 +435,8 @@ func (sm *SetupManager) buildCommandWithEnv(toolName string, runtime *config.Run
 	var envExports []string
 	for key, value := range envVars {
 		// Escape special characters
-		escapedValue := strings.ReplaceAll(value, `"`, `\"`)
-		escapedValue = strings.ReplaceAll(escapedValue, `$`, `\$`)
-		escapedValue = strings.ReplaceAll(escapedValue, "`", "\\`")
-		escapedValue = strings.ReplaceAll(escapedValue, `&`, `\&`)
-		escapedValue = strings.ReplaceAll(escapedValue, `;`, `\;`)
-		escapedValue = strings.ReplaceAll(escapedValue, `|`, `\|`)
-		escapedValue = strings.ReplaceAll(escapedValue, `>`, `\>`)
-		escapedValue = strings.ReplaceAll(escapedValue, `<`, `\<`)
-		escapedValue = strings.ReplaceAll(escapedValue, `(`, `\(`)
-		escapedValue = strings.ReplaceAll(escapedValue, `)`, `\)`)
-		escapedValue = strings.ReplaceAll(escapedValue, ` `, `\ `)
+		escapedValue := EscapeShellValue(value)
+		// Handle tab and newline characters specifically for command context
 		escapedValue = strings.ReplaceAll(escapedValue, `\t`, `\t`)
 		escapedValue = strings.ReplaceAll(escapedValue, `\n`, `\n`)
 
@@ -580,7 +572,7 @@ func (sm *SetupManager) restoreFromBackup(installer ToolInstaller, backupPath, c
 	}
 
 	// Write to configuration file
-	if err := os.WriteFile(configPath, data, 0644); err != nil {
+	if err := os.WriteFile(configPath, data, constants.ConfigFileMode); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 

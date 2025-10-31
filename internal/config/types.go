@@ -114,18 +114,10 @@ func (c *Config) Validate() error {
 }
 
 // ResolveAlias resolves a tool alias to its actual name
-// DISABLED: Alias functionality temporarily disabled
+// TODO: Re-enable alias functionality when needed
 func (c *Config) ResolveAlias(name string) string {
 	// Temporarily disable alias functionality - return name as-is
 	return name
-
-	// Original alias resolution code (disabled):
-	/*
-		if alias, ok := c.Aliases[name]; ok {
-			return alias
-		}
-		return name
-	*/
 }
 
 // GetKey retrieves a key configuration by name
