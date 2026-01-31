@@ -28,7 +28,10 @@ Examples:
   aim run claude-code
 
   # Pass additional arguments to the tool
-  aim run claude-code --key deepseek-work -- --help`,
+  aim run claude-code --key deepseek-work -- --help
+
+  # Pass claude-specific arguments (for autonomous execution)
+  aim run claude-code --key glm-coding --claude-args "--dangerously-skip-permissions"`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: runRun,
 }
@@ -39,6 +42,8 @@ func init() {
 	runCmd.Flags().String("provider", "", "Provider to use (overrides key's default provider)")
 	runCmd.Flags().String("model", "", "Model to use (overrides configuration)")
 	runCmd.Flags().Int("timeout", 0, "Timeout in milliseconds (overrides configuration)")
+	runCmd.Flags().StringSlice("claude-args", []string{}, "Additional arguments to pass to claude/codex tools")
+	runCmd.Flags().Bool("native", false, "Use tool's native configuration (no env vars)")
 }
 
 func runRun(cmd *cobra.Command, args []string) error {
@@ -47,6 +52,8 @@ func runRun(cmd *cobra.Command, args []string) error {
 	providerName, _ := cmd.Flags().GetString("provider")
 	modelName, _ := cmd.Flags().GetString("model")
 	timeout, _ := cmd.Flags().GetInt("timeout")
+	additionalArgs, _ := cmd.Flags().GetStringSlice("claude-args")
+	nativeMode, _ := cmd.Flags().GetBool("native")
 
 	// Get canonical name (handle aliases like cc -> claude-code)
 	canonicalToolName := tool.GetCanonicalName(toolName)
@@ -54,6 +61,11 @@ func runRun(cmd *cobra.Command, args []string) error {
 	// Check if tool is supported
 	if !tool.IsToolSupported(canonicalToolName) {
 		return fmt.Errorf("unsupported tool: %s. Currently supported tools: [codex claude-code (cc)]", toolName)
+	}
+
+	// If native mode is enabled, skip all configuration
+	if nativeMode {
+		return runNative(cmd, args, canonicalToolName)
 	}
 
 	// Get global configuration manager
@@ -109,11 +121,19 @@ func runRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to update runtime env vars: %w", err)
 	}
 
-	// Claude Code: omit model env var unless explicitly overridden.
-	if canonicalToolName == string(tool.ToolTypeClaudeCode) && !runtime.ModelOverride {
+	// Claude Code: omit model env var only if model is not explicitly set in profile.
+	// If profile has model: "-", we don't pass ANTHROPIC_MODEL.
+	// If profile has model: "xxx", we pass ANTHROPIC_MODEL="xxx".
+	if canonicalToolName == string(tool.ToolTypeClaudeCode) {
 		toolConfig, _ := cfg.GetTool(canonicalToolName)
 		toolProfile, _ := cfg.GetToolProfile(canonicalToolName, runtime.Profile)
-		removeModelEnvVars(toolConfig, toolProfile, runtime.Profile, runtime.EnvVars)
+
+		// Only remove model env vars if:
+		// 1. Model is empty (not set), AND
+		// 2. Not explicitly overridden via CLI
+		if runtime.Model == "" && !runtime.ModelOverride {
+			removeModelEnvVars(toolConfig, toolProfile, runtime.Profile, runtime.EnvVars)
+		}
 	}
 
 	// Prepare tool-specific environment and arguments
@@ -153,10 +173,15 @@ func runRun(cmd *cobra.Command, args []string) error {
 		toolArgs = append(toolConfigArgs, toolArgs...)
 	}
 
+	// Add additional arguments from --claude-args flag
+	if len(additionalArgs) > 0 {
+		toolArgs = append(toolArgs, additionalArgs...)
+	}
+
 	// Show what we're running
 	if verbose {
-		fmt.Fprintf(os.Stderr, "Running: %s (canonical: %s) with key=%s, provider=%s, model=%s\n",
-			toolName, canonicalToolName, keyName, runtime.Provider, runtime.Model)
+		fmt.Fprintf(os.Stderr, "Running: %s (canonical: %s) with key=%s, provider=%s, profile=%s, model=%s\n",
+			toolName, canonicalToolName, keyName, runtime.Provider, runtime.Profile, runtime.Model)
 	}
 
 	// Execute with environment
@@ -248,6 +273,75 @@ func isExecutable(path string) bool {
 
 	mode := info.Mode()
 	return !mode.IsDir() && mode&0111 != 0
+}
+
+// runNative runs a tool in native mode (no environment variables)
+func runNative(cmd *cobra.Command, args []string, canonicalToolName string) error {
+	toolName := args[0]
+
+	// Check for conflicting flags
+	if cmd.Flags().Changed("key") {
+		fmt.Fprintf(os.Stderr, "Warning: --native flag specified, ignoring --key\n")
+	}
+	if cmd.Flags().Changed("provider") {
+		fmt.Fprintf(os.Stderr, "Warning: --native flag specified, ignoring --provider\n")
+	}
+	if cmd.Flags().Changed("model") {
+		fmt.Fprintf(os.Stderr, "Warning: --native flag specified, ignoring --model\n")
+	}
+	if cmd.Flags().Changed("timeout") {
+		fmt.Fprintf(os.Stderr, "Warning: --native flag specified, ignoring --timeout\n")
+	}
+
+	// Check if tool is supported
+	if !tool.IsToolSupported(canonicalToolName) {
+		return fmt.Errorf("unsupported tool: %s. Currently supported tools: [codex claude-code (cc)]", toolName)
+	}
+
+	// Get tool command
+	cm := config.GetConfigManager()
+	cfg := cm.GetConfig()
+	toolConfig, ok := cfg.GetTool(canonicalToolName)
+	if !ok {
+		return fmt.Errorf("tool '%s' not configured", canonicalToolName)
+	}
+
+	// Find real binary
+	realBinary, err := findRealBinary(toolConfig.Command)
+	if err != nil {
+		return fmt.Errorf("failed to find binary '%s': %w", toolConfig.Command, err)
+	}
+
+	// Extract tool arguments after --
+	var toolArgs []string
+	if len(os.Args) > 0 {
+		// Find the -- separator
+		for i, arg := range os.Args {
+			if arg == "--" && i+1 < len(os.Args) {
+				toolArgs = os.Args[i+1:]
+				break
+			}
+		}
+	}
+
+	// Get additional claude-args
+	additionalArgs, _ := cmd.Flags().GetStringSlice("claude-args")
+	if len(additionalArgs) > 0 {
+		toolArgs = append(toolArgs, additionalArgs...)
+	}
+
+	// Show what we're running
+	if verbose {
+		fmt.Fprintf(os.Stderr, "Running %s in native mode (no env vars)\n", canonicalToolName)
+	}
+
+	// Execute with NO environment variables
+	execCmd := exec.Command(realBinary, toolArgs...)
+	execCmd.Stdin = os.Stdin
+	execCmd.Stdout = os.Stdout
+	execCmd.Stderr = os.Stderr
+
+	return execCmd.Run()
 }
 
 // execWithEnv executes a command with environment variables

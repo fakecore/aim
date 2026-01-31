@@ -5,7 +5,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fakecore/aim/configs"
 	"github.com/fakecore/aim/internal/provider"
+	"gopkg.in/yaml.v3"
 )
 
 // Resolver resolves configuration based on the v1.0 inheritance design
@@ -128,9 +130,15 @@ func (r *Resolver) resolveBaseURL(toolName, profileName, providerName string) (s
 // 2. Tool defaults: tools.<tool>.defaults.model (if exists)
 // 3. Global Provider config: providers.<provider>.model
 // 4. Built-in defaults
+// Note: To explicitly disable passing ANTHROPIC_MODEL, set model: "-" in profile
 func (r *Resolver) resolveModel(toolName, profileName, providerName string) (string, error) {
 	// 1. Check tool-specific profile configuration
 	if toolProfile, ok := r.config.GetToolProfile(toolName, profileName); ok {
+		// Check if model field is explicitly set in profile
+		// If set to "-", it means "don't pass model"
+		if toolProfile.Model == "-" {
+			return "", nil
+		}
 		if toolProfile.Model != "" {
 			return toolProfile.Model, nil
 		}
@@ -219,6 +227,14 @@ func (r *Resolver) buildEnvVars(toolName string, tool *ToolConfig, toolProfile *
 				envVars[envKey] = value
 			}
 		}
+	}
+
+	// Debug: log model value for ANTHROPIC_MODEL
+	if model == "" {
+		// model is empty, don't set ANTHROPIC_MODEL
+	} else if _, exists := envVars["ANTHROPIC_MODEL"]; !exists {
+		// ANTHROPIC_MODEL not set yet, check if it should be
+		// This is handled by the field mapping above
 	}
 
 	// 3. Apply provider-specific API key environment variable (for tools like codex)
@@ -473,9 +489,30 @@ func (r *Resolver) ValidateTool(toolName string) error {
 		return fmt.Errorf("tool '%s' has no command specified", toolName)
 	}
 
+	// If profiles is empty, try to load from builtin defaults
 	if len(tool.Profiles) == 0 {
-		return fmt.Errorf("tool '%s' has no profiles configured", toolName)
+		// Try to load default tool configuration
+		defaultTools, err := r.loadDefaultToolConfig()
+		if err == nil {
+			if defaultTool, hasDefault := defaultTools[toolName]; hasDefault && len(defaultTool.Profiles) > 0 {
+				// Use builtin profiles as fallback
+				tool.Profiles = defaultTool.Profiles
+			} else {
+				return fmt.Errorf("tool '%s' has no profiles configured. Run 'aim config init' to create default configuration", toolName)
+			}
+		} else {
+			return fmt.Errorf("tool '%s' has no profiles configured", toolName)
+		}
 	}
 
 	return nil
+}
+
+// loadDefaultToolConfig loads default tool configurations from embedded config
+func (r *Resolver) loadDefaultToolConfig() (map[string]*ToolConfig, error) {
+	var defaultConfig Config
+	if err := yaml.Unmarshal(configs.DefaultConfigData, &defaultConfig); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal embedded default config: %w", err)
+	}
+	return defaultConfig.Tools, nil
 }
