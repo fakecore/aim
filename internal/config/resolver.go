@@ -78,7 +78,7 @@ func (r *Resolver) Resolve(toolName, keyName, profileName string) (*RuntimeConfi
 	}
 
 	// 10. Build environment variables
-	envVars := r.buildEnvVars(toolName, tool, toolProfile, key, baseURL, model, finalProfile)
+	envVars := r.buildEnvVars(toolName, tool, toolProfile, key, baseURL, model, timeout, finalProfile)
 
 	return &RuntimeConfig{
 		Tool:     toolName,
@@ -191,14 +191,14 @@ func (r *Resolver) resolveTimeout(toolName, profileName, providerName string) (t
 
 // buildEnvVars builds environment variables using field-based mapping
 // Priority: Profile field mapping -> Tool field mapping -> Provider-specific EnvKeyName -> Profile env -> Tool defaults env -> Global settings env
-func (r *Resolver) buildEnvVars(toolName string, tool *ToolConfig, toolProfile *ToolProfile, key *Key, baseURL, model string, profileName string) map[string]string {
+func (r *Resolver) buildEnvVars(toolName string, tool *ToolConfig, toolProfile *ToolProfile, key *Key, baseURL, model string, timeout time.Duration, profileName string) map[string]string {
 	envVars := make(map[string]string)
 
 	// 1. Apply profile-specific field mapping first (highest priority)
 	if toolProfile != nil && toolProfile.FieldMapping != nil {
 		for envKey, fieldPath := range toolProfile.FieldMapping {
 			// Resolve field path to actual value
-			value := r.resolveFieldPath(toolName, fieldPath, key, toolProfile, baseURL, model, profileName)
+			value := r.resolveFieldPath(toolName, fieldPath, key, toolProfile, baseURL, model, timeout, profileName)
 			if value != "" {
 				envVars[envKey] = value
 			}
@@ -214,7 +214,7 @@ func (r *Resolver) buildEnvVars(toolName string, tool *ToolConfig, toolProfile *
 			}
 
 			// Resolve field path to actual value
-			value := r.resolveFieldPath(toolName, fieldPath, key, toolProfile, baseURL, model, profileName)
+			value := r.resolveFieldPath(toolName, fieldPath, key, toolProfile, baseURL, model, timeout, profileName)
 			if value != "" {
 				envVars[envKey] = value
 			}
@@ -254,7 +254,7 @@ func (r *Resolver) buildEnvVars(toolName string, tool *ToolConfig, toolProfile *
 //   - "profiles.{current_profile}.base_url" -> toolProfile.BaseURL or baseURL
 //   - "profiles.{current_profile}.model" -> toolProfile.Model or model
 //   - "profiles.{current_profile}.timeout" -> toolProfile.Timeout as string
-func (r *Resolver) resolveFieldPath(toolName, fieldPath string, key *Key, toolProfile *ToolProfile, baseURL, model string, finalProfile string) string {
+func (r *Resolver) resolveFieldPath(toolName, fieldPath string, key *Key, toolProfile *ToolProfile, baseURL, model string, timeout time.Duration, finalProfile string) string {
 	// Replace placeholders
 	fieldPath = strings.ReplaceAll(fieldPath, "{current_key}", key.Provider)
 	fieldPath = strings.ReplaceAll(fieldPath, "{current_profile}", finalProfile)
@@ -283,6 +283,9 @@ func (r *Resolver) resolveFieldPath(toolName, fieldPath string, key *Key, toolPr
 			case "model":
 				return model
 			case "timeout":
+				if timeout > 0 {
+					return fmt.Sprintf("%d", timeout.Milliseconds())
+				}
 				if toolProfile != nil && toolProfile.Timeout > 0 {
 					return fmt.Sprintf("%d", toolProfile.Timeout)
 				}
@@ -421,6 +424,34 @@ func (r *Resolver) ValidateKey(keyName string) error {
 		return fmt.Errorf("key '%s' has no provider specified", keyName)
 	}
 
+	return nil
+}
+
+// UpdateRuntimeEnvVars rebuilds environment variables for a runtime config.
+// This is useful after applying CLI overrides (e.g., model/timeout).
+func (r *Resolver) UpdateRuntimeEnvVars(runtime *RuntimeConfig) error {
+	if runtime == nil {
+		return fmt.Errorf("runtime config is nil")
+	}
+
+	toolName := r.config.ResolveAlias(runtime.Tool)
+
+	toolCfg, ok := r.config.GetTool(toolName)
+	if !ok {
+		return fmt.Errorf("tool '%s' not found", toolName)
+	}
+
+	keyCfg, ok := r.config.GetKey(runtime.Key)
+	if !ok {
+		return fmt.Errorf("key '%s' not found", runtime.Key)
+	}
+
+	toolProfile, ok := r.config.GetToolProfile(toolName, runtime.Profile)
+	if !ok {
+		return fmt.Errorf("profile '%s' not configured for tool '%s'", runtime.Profile, toolName)
+	}
+
+	runtime.EnvVars = r.buildEnvVars(toolName, toolCfg, toolProfile, keyCfg, runtime.BaseURL, runtime.Model, runtime.Timeout, runtime.Profile)
 	return nil
 }
 

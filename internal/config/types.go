@@ -75,8 +75,11 @@ type RuntimeConfig struct {
 	APIKey   string
 	BaseURL  string
 	Model    string
-	Timeout  time.Duration
-	EnvVars  map[string]string
+	// ModelOverride indicates the model was explicitly set (e.g., via CLI).
+	// This prevents automatic omission of model env vars for tools like claude-code.
+	ModelOverride bool
+	Timeout       time.Duration
+	EnvVars       map[string]string
 }
 
 // DefaultConfig returns the default v1.0 configuration

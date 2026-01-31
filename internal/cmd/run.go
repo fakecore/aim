@@ -98,9 +98,22 @@ func runRun(cmd *cobra.Command, args []string) error {
 	// Apply command line overrides
 	if modelName != "" {
 		runtime.Model = modelName
+		runtime.ModelOverride = true
 	}
 	if timeout > 0 {
 		runtime.Timeout = time.Duration(timeout) * time.Millisecond
+	}
+
+	// Rebuild env vars after overrides so model/timeout changes are reflected.
+	if err := resolver.UpdateRuntimeEnvVars(runtime); err != nil {
+		return fmt.Errorf("failed to update runtime env vars: %w", err)
+	}
+
+	// Claude Code: omit model env var unless explicitly overridden.
+	if canonicalToolName == string(tool.ToolTypeClaudeCode) && !runtime.ModelOverride {
+		toolConfig, _ := cfg.GetTool(canonicalToolName)
+		toolProfile, _ := cfg.GetToolProfile(canonicalToolName, runtime.Profile)
+		removeModelEnvVars(toolConfig, toolProfile, runtime.Profile, runtime.EnvVars)
 	}
 
 	// Prepare tool-specific environment and arguments
@@ -148,6 +161,46 @@ func runRun(cmd *cobra.Command, args []string) error {
 
 	// Execute with environment
 	return execWithEnv(realBinary, toolArgs, runtime.EnvVars)
+}
+
+func removeModelEnvVars(toolConfig *config.ToolConfig, toolProfile *config.ToolProfile, profileName string, envVars map[string]string) {
+	for _, envKey := range modelEnvKeys(toolConfig, toolProfile, profileName) {
+		delete(envVars, envKey)
+	}
+}
+
+func modelEnvKeys(toolConfig *config.ToolConfig, toolProfile *config.ToolProfile, profileName string) []string {
+	var keys []string
+
+	addKeys := func(mapping map[string]string) {
+		for envKey, fieldPath := range mapping {
+			if isModelFieldPath(fieldPath, profileName) {
+				keys = append(keys, envKey)
+			}
+		}
+	}
+
+	if toolProfile != nil {
+		addKeys(toolProfile.FieldMapping)
+	}
+	if toolConfig != nil {
+		addKeys(toolConfig.FieldMapping)
+	}
+
+	return keys
+}
+
+func isModelFieldPath(fieldPath, profileName string) bool {
+	if fieldPath == "" {
+		return false
+	}
+	if fieldPath == "profiles.{current_profile}.model" {
+		return true
+	}
+	if profileName != "" && fieldPath == fmt.Sprintf("profiles.%s.model", profileName) {
+		return true
+	}
+	return false
 }
 
 // findRealBinary finds real binary in PATH (excluding ~/.aim/bin and AIM_HOME/bin)

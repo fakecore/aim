@@ -7,3 +7,6 @@ out/
 # 本地测试环境
 aim-local-dev/
 .kilocode/
+
+# macOS
+.DS_Store
