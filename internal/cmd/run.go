@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/fakecore/aim/internal/config"
@@ -30,8 +31,14 @@ Examples:
   # Pass additional arguments to the tool
   aim run claude-code --key deepseek-work -- --help
 
-  # Pass claude-specific arguments (for autonomous execution)
-  aim run claude-code --key glm-coding --claude-args "--dangerously-skip-permissions"`,
+  # Pass CLI-specific arguments (space-separated in one flag)
+  aim run claude-code --key glm-coding --cli-args "--dangerously-skip-permissions"
+
+  # Pass multiple CLI-specific arguments (space-separated)
+  aim run claude-code --key glm-coding --cli-args "-arg1 -arg2 -arg3"
+
+  # Or use multiple flags (each will be split on spaces)
+  aim run claude-code --key glm-coding --cli-args "-arg1" --cli-args "-arg2"`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: runRun,
 }
@@ -42,7 +49,7 @@ func init() {
 	runCmd.Flags().String("provider", "", "Provider to use (overrides key's default provider)")
 	runCmd.Flags().String("model", "", "Model to use (overrides configuration)")
 	runCmd.Flags().Int("timeout", 0, "Timeout in milliseconds (overrides configuration)")
-	runCmd.Flags().StringSlice("claude-args", []string{}, "Additional arguments to pass to claude/codex tools")
+	runCmd.Flags().StringSlice("cli-args", []string{}, "Additional arguments to pass to the CLI tool")
 	runCmd.Flags().Bool("native", false, "Use tool's native configuration (no env vars)")
 }
 
@@ -52,7 +59,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 	providerName, _ := cmd.Flags().GetString("provider")
 	modelName, _ := cmd.Flags().GetString("model")
 	timeout, _ := cmd.Flags().GetInt("timeout")
-	additionalArgs, _ := cmd.Flags().GetStringSlice("claude-args")
+	additionalArgs, _ := cmd.Flags().GetStringSlice("cli-args")
 	nativeMode, _ := cmd.Flags().GetBool("native")
 
 	// Get canonical name (handle aliases like cc -> claude-code)
@@ -173,9 +180,14 @@ func runRun(cmd *cobra.Command, args []string) error {
 		toolArgs = append(toolConfigArgs, toolArgs...)
 	}
 
-	// Add additional arguments from --claude-args flag
+	// Add additional arguments from --cli-args flag
+	// Split each value on spaces to support space-separated arguments
 	if len(additionalArgs) > 0 {
-		toolArgs = append(toolArgs, additionalArgs...)
+		for _, argGroup := range additionalArgs {
+			// Split on whitespace and append non-empty parts
+			parts := splitWhitespace(argGroup)
+			toolArgs = append(toolArgs, parts...)
+		}
 	}
 
 	// Show what we're running
@@ -324,10 +336,14 @@ func runNative(cmd *cobra.Command, args []string, canonicalToolName string) erro
 		}
 	}
 
-	// Get additional claude-args
-	additionalArgs, _ := cmd.Flags().GetStringSlice("claude-args")
+	// Get additional cli-args
+	additionalArgs, _ := cmd.Flags().GetStringSlice("cli-args")
 	if len(additionalArgs) > 0 {
-		toolArgs = append(toolArgs, additionalArgs...)
+		for _, argGroup := range additionalArgs {
+			// Split on whitespace and append non-empty parts
+			parts := splitWhitespace(argGroup)
+			toolArgs = append(toolArgs, parts...)
+		}
 	}
 
 	// Show what we're running
@@ -372,4 +388,15 @@ func execWithEnv(binary string, args []string, envVars map[string]string) error 
 
 	// Execute
 	return cmd.Run()
+}
+
+// splitWhitespace splits a string on whitespace and returns non-empty parts
+func splitWhitespace(s string) []string {
+	var result []string
+	for _, part := range strings.Fields(s) {
+		if part != "" {
+			result = append(result, part)
+		}
+	}
+	return result
 }
