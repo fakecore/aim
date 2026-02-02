@@ -91,6 +91,7 @@ aim run codex --key another-key
 
 ## 📚 Documentation
 
+- **[🚀 AI Vibe Coding Guide](docs/ai-vibe-coding-guide.md)** - Quick start guide for AI-assisted AIM setup (drag into Cursor/Claude!)
 - **[CI/CD Complete Guide](docs/cicd/ci_cd.md)** - Continuous integration and deployment reference
 - **[Local Development Setup](docs/development-guide/local_dev.md)** - Local development environment configuration guide
 - **[TUI Interface Design](docs/tui-interface/tui_design.md)** - Terminal user interface design documentation

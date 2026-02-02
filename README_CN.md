@@ -92,6 +92,7 @@ aim run codex --key another-key
 
 ## 📚 文档
 
+- **[🚀 AI Vibe Coding 指南](docs/ai-vibe-coding-guide.md)** - AI 辅助 AIM 设置快速入门指南（可拖入 Cursor/Claude!）
 - **[CI/CD 完整指南](docs/cicd/ci_cd_cn.md)** - 持续集成和部署的权威参考
 - **[本地开发环境设置](docs/development-guide/local_dev_cn.md)** - 本地开发环境配置指南
 - **[TUI 界面设计](docs/tui-interface/tui_design_cn.md)** - 终端用户界面设计文档
