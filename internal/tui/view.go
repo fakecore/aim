@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/fakecore/aim/internal/config"
 )
 
 func (m Model) View() string {
@@ -107,21 +108,54 @@ func (m Model) renderAccountList() string {
 
 func (m Model) renderPreview() string {
 	if len(m.accounts) == 0 {
-		return "No accounts configured"
+		return placeholderStyle.Render("No accounts configured\n\nPress 'n' to create one")
 	}
+
 	name := m.accounts[m.selectedIdx]
+	acc := m.config.Accounts[name]
+
 	var lines []string
-	lines = append(lines, titleStyle.Render("PREVIEW"))
+	lines = append(lines, titleStyle.Render("LIVE PREVIEW"))
 	lines = append(lines, "")
+
+	// Account info
 	lines = append(lines, fmt.Sprintf("Account: %s", name))
+	lines = append(lines, fmt.Sprintf("Vendor: %s", acc.Vendor))
+	if acc.Vendor == "" {
+		lines = append(lines, fmt.Sprintf("  (inferred: %s)", name))
+	}
 	lines = append(lines, "")
-	lines = append(lines, "Commands:")
-	lines = append(lines, fmt.Sprintf("  aim run cc -a %s", name))
+
+	// Supported tools
+	lines = append(lines, "Supported tools:")
+	lines = append(lines, "")
+
+	// claude-code
+	lines = append(lines, lipgloss.NewStyle().Bold(true).Render("claude-code"))
+	lines = append(lines, fmt.Sprintf("  $ aim run cc -a %s", name))
+	if acc.Key != "" {
+		key, _ := config.ResolveKey(acc.Key)
+		lines = append(lines, fmt.Sprintf("  ANTHROPIC_AUTH_TOKEN=%s...", truncate(key, 16)))
+	}
+	lines = append(lines, "")
+
+	// codex
+	lines = append(lines, lipgloss.NewStyle().Bold(true).Render("codex"))
+	lines = append(lines, fmt.Sprintf("  $ aim run codex -a %s", name))
+	lines = append(lines, "")
+
 	if m.layout == LayoutSingle {
-		lines = append(lines, "")
 		lines = append(lines, helpStyle.Render("Tab: switch to accounts"))
 	}
+
 	return strings.Join(lines, "\n")
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n]
 }
 
 func (m Model) renderStatusTab() string {
