@@ -18,8 +18,13 @@ var runCmd = &cobra.Command{
 	Short: "Run a tool with specific configuration",
 	Long: `Run a tool with a specific key and provider using the v2.0 simplified configuration.
 
+By default, runs in native mode (no environment variables). Use configuration flags (--key, --provider, etc.) to enable AIM configuration.
+
 Examples:
-  # Run with default provider from key
+  # Run in native mode (default - no env vars)
+  aim run claude-code
+
+  # Run with AIM configuration
   aim run claude-code --key deepseek-work
 
   # Override provider
@@ -38,7 +43,10 @@ Examples:
   aim run claude-code --key glm-coding --cli-args "-arg1 -arg2 -arg3"
 
   # Or use multiple flags (each will be split on spaces)
-  aim run claude-code --key glm-coding --cli-args "-arg1" --cli-args "-arg2"`,
+  aim run claude-code --key glm-coding --cli-args "-arg1" --cli-args "-arg2"
+
+  # Explicitly use native mode even with config flags
+  aim run claude-code --native --key deepseek-work`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: runRun,
 }
@@ -61,6 +69,16 @@ func runRun(cmd *cobra.Command, args []string) error {
 	timeout, _ := cmd.Flags().GetInt("timeout")
 	additionalArgs, _ := cmd.Flags().GetStringSlice("cli-args")
 	nativeMode, _ := cmd.Flags().GetBool("native")
+
+	// Determine if native mode should be used
+	// - If --native is explicitly set, always use native mode
+	// - If neither --key nor --provider is specified, default to native mode
+	// - Otherwise, use AIM configuration
+	if !nativeMode {
+		hasKeyFlag := cmd.Flags().Changed("key")
+		hasProviderFlag := cmd.Flags().Changed("provider")
+		nativeMode = !hasKeyFlag && !hasProviderFlag
+	}
 
 	// Get canonical name (handle aliases like cc -> claude-code)
 	canonicalToolName := tool.GetCanonicalName(toolName)
@@ -296,16 +314,10 @@ func runNative(cmd *cobra.Command, args []string, canonicalToolName string) erro
 
 	// Check for conflicting flags
 	if cmd.Flags().Changed("key") {
-		fmt.Fprintf(os.Stderr, "Warning: --native flag specified, ignoring --key\n")
+		fmt.Fprintf(os.Stderr, "Warning: Running in native mode, ignoring --key\n")
 	}
 	if cmd.Flags().Changed("provider") {
-		fmt.Fprintf(os.Stderr, "Warning: --native flag specified, ignoring --provider\n")
-	}
-	if cmd.Flags().Changed("model") {
-		fmt.Fprintf(os.Stderr, "Warning: --native flag specified, ignoring --model\n")
-	}
-	if cmd.Flags().Changed("timeout") {
-		fmt.Fprintf(os.Stderr, "Warning: --native flag specified, ignoring --timeout\n")
+		fmt.Fprintf(os.Stderr, "Warning: Running in native mode, ignoring --provider\n")
 	}
 
 	// Check if tool is supported
@@ -313,19 +325,23 @@ func runNative(cmd *cobra.Command, args []string, canonicalToolName string) erro
 		return fmt.Errorf("unsupported tool: %s. Currently supported tools: [codex claude-code (cc) opencode]", toolName)
 	}
 
-	// Get tool command
-	cm := config.GetConfigManager()
-	cfg := cm.GetConfig()
-	toolConfig, ok := cfg.GetTool(canonicalToolName)
-	if !ok {
-		return fmt.Errorf("tool '%s' not configured", canonicalToolName)
+	// In native mode, use the tool name directly as the command
+	// Map canonical tool names to their actual binary names
+	binaryName := map[string]string{
+		"codex":       "codex",
+		"claude-code": "claude",
+		"cc":          "claude",
+	}[canonicalToolName]
+	if binaryName == "" {
+		binaryName = canonicalToolName
 	}
 
 	// Find real binary
-	realBinary, err := findRealBinary(toolConfig.Command)
+	realBinary, err := findRealBinary(binaryName)
 	if err != nil {
-		return fmt.Errorf("failed to find binary '%s': %w", toolConfig.Command, err)
+		return fmt.Errorf("failed to find binary '%s': %w", binaryName, err)
 	}
+	fmt.Fprintf(os.Stderr, "DEBUG: Found binary: %s\n", realBinary)
 
 	// Extract tool arguments after --
 	var toolArgs []string
@@ -354,8 +370,9 @@ func runNative(cmd *cobra.Command, args []string, canonicalToolName string) erro
 		fmt.Fprintf(os.Stderr, "Running %s in native mode (no env vars)\n", canonicalToolName)
 	}
 
-	// Execute with NO environment variables
+	// Execute with standard environment
 	execCmd := exec.Command(realBinary, toolArgs...)
+	execCmd.Env = os.Environ()
 	execCmd.Stdin = os.Stdin
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr
