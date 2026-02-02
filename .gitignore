@@ -10,3 +10,5 @@ aim-local-dev/
 
 # macOS
 .DS_Store
+
+.loop-agent/
