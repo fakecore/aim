@@ -13,6 +13,16 @@ const (
 	LayoutSplit
 )
 
+// EditMode represents the current edit state
+type EditMode int
+
+const (
+	EditNone EditMode = iota
+	EditName
+	EditKey
+	EditVendor
+)
+
 type Tab int
 
 const (
@@ -33,6 +43,9 @@ type Model struct {
 	accounts    []string
 	selectedIdx int
 	showPreview bool
+	editMode    EditMode
+	editValue   string
+	cursor      int
 }
 
 func New(cfg *config.Config) Model {

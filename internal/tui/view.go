@@ -91,6 +91,17 @@ func (m Model) renderAccountList() string {
 		lines = append(lines, "")
 		lines = append(lines, helpStyle.Render("Tab: switch to preview"))
 	}
+
+	// Edit mode
+	if m.editMode == EditName {
+		lines = append(lines, "")
+		lines = append(lines, "New account name:")
+		lines = append(lines, m.editValue+"_")
+	}
+
+	lines = append(lines, "")
+	lines = append(lines, helpStyle.Render("n: new  e: edit  d: delete  q: quit"))
+
 	return strings.Join(lines, "\n")
 }
 
