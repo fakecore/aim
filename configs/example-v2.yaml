@@ -1,0 +1,401 @@
+# AIM Configuration v2.0 - Provider-Centric Design
+# Copy to ~/.config/aim/config.yaml and customize
+#
+# Design Principles:
+# 1. Provider is the identity - keys are just credentials
+# 2. CLI args pass-through - everything after `--` goes to tool
+# 3. Flexible env injection - per-CLI configuration
+# 4. Optional proxy routes - smart failover chains
+# 5. Key encryption support - secure credential storage
+
+version: "2.0"
+
+# ============================================================================
+# GLOBAL SETTINGS
+# ============================================================================
+settings:
+  default_provider: deepseek  # Used when -p not specified
+  language: zh                 # UI language (zh/en)
+  # proxy_port: 8080           # Optional: for gateway mode
+
+  # Key encryption (optional, remove if not using)
+  key_encryption:
+    encrypt_key: ${AIM_ENCRYPT_KEY}  # Your secret key (via env recommended)
+    algorithm: aes-256                # Options: aes-128, aes-256, xor
+
+# ============================================================================
+# VENDORS: API service providers
+# ============================================================================
+# Each vendor defines base_url and optional alternative endpoints
+# Keys can reference these endpoints for different purposes
+vendors:
+  deepseek:
+    base_url: https://api.deepseek.com/v1
+    # Optional: predefined alternative endpoints
+    endpoints:
+      anthropic: https://api.deepseek.com/anthropic
+      coding_plan: https://api.deepseek.com/coding-plan
+
+  glm:
+    base_url: https://open.bigmodel.cn/api/paas/v4
+    endpoints:
+      anthropic: https://open.bigmodel.cn/api/anthropic
+
+  kimi:
+    base_url: https://api.moonshot.cn/v1
+    endpoints:
+      anthropic: https://api.moonshot.cn/anthropic
+
+  qwen:
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+
+  openai:
+    base_url: https://api.openai.com/v1
+
+# ============================================================================
+# KEYS: Saved API credentials (can be encrypted)
+# ============================================================================
+# Keys are reusable - same key can be used by multiple providers
+# Keys can optionally specify which endpoint to use
+keys:
+  - name: deepseek-main
+    vendor: deepseek
+    value: ${DEEPSEEK_API_KEY}           # or encrypted value
+    # endpoint: anthropic                # Optional: use alternative endpoint
+
+  - name: deepseek-work
+    vendor: deepseek
+    value: ${DEEPSEEK_WORK_KEY}
+
+  - name: deepseek-personal
+    vendor: deepseek
+    value: <encrypted_output_from_aim_key_encrypt>
+
+  - name: glm-main
+    vendor: glm
+    value: ${GLM_API_KEY}
+
+  - name: glm-coding
+    vendor: glm
+    endpoint: anthropic                  # Use GLM's anthropic endpoint
+    value: ${GLM_CODING_KEY}
+
+  - name: kimi-main
+    vendor: kimi
+    value: <encrypted_output_from_aim_key_encrypt>
+
+# ============================================================================
+# PROVIDERS: Each provider uses ONE key for a specific purpose
+# ============================================================================
+# Provider name = purpose (deepseek, deepseek-work, glm-coding)
+# Each provider references exactly one key
+providers:
+  # For daily development
+  deepseek:
+    key: deepseek-main
+
+  # For work projects
+  deepseek-work:
+    key: deepseek-work
+
+  # For personal projects
+  deepseek-personal:
+    key: deepseek-personal
+
+  # GLM for coding (uses anthropic endpoint)
+  glm-coding:
+    key: glm-coding
+
+  # GLM for general use
+  glm:
+    key: glm-main
+
+  # KIMI
+  kimi:
+    key: kimi-main
+
+# ============================================================================
+# ROUTES: Optional fallback chains for smart failover
+# ============================================================================
+routes:
+  # Try fast providers first
+  fast:
+    max_retries: 3
+    chain:
+      - kimi
+      - deepseek
+      - glm
+
+  # China providers priority
+  china:
+    max_retries: 2
+    chain:
+      - glm
+      - deepseek
+
+  # Work mode: specific work providers
+  work:
+    max_retries: 3
+    chain:
+      - deepseek-work
+      - glm-coding
+
+# ============================================================================
+# CLIS: Define how each tool receives environment variables
+# ============================================================================
+# Priority: cli.vendors.xxx > key.endpoint > vendor.base_url
+clis:
+  # Claude Code (claude)
+  claude-code:
+    command: claude
+    # Default env injection
+    inject:
+      ANTHROPIC_AUTH_TOKEN: "${key}"              # From provider's key
+      ANTHROPIC_BASE_URL: "${vendor.base_url}"     # Resolved URL
+
+    # CLI-level overrides (highest priority)
+    # These override vendor/base_url settings
+    vendors:
+      deepseek:
+        base_url: https://api.deepseek.com/anthropic
+        inject:
+          ANTHROPIC_DEFAULT_SONNET_MODEL: deepseek-chat
+      glm:
+        base_url: https://open.bigmodel.cn/api/anthropic
+      kimi:
+        base_url: https://api.moonshot.cn/anthropic
+      qwen:
+        base_url: https://dashscope.aliyuncs.com/api/v2/apps/claude-code-proxy
+
+  # Codex
+  codex:
+    command: codex
+    inject:
+      OPENAI_API_KEY: "${key}"
+      OPENAI_BASE_URL: "${vendor.base_url}"
+    # Uses vendor.base_url directly, no overrides needed
+
+  # OpenCode
+  opencode:
+    command: opencode
+    inject:
+      OPENAI_API_KEY: "${key}"
+      OPENAI_BASE_URL: "${vendor.base_url}"
+
+# ============================================================================
+# USAGE EXAMPLES
+# ============================================================================
+
+# -----------------------------------------------------------------------------
+# 1. BASIC PROVIDER USAGE
+# -----------------------------------------------------------------------------
+# Architecture: cli → provider → key → vendor
+#
+# Each provider uses ONE key:
+#   aim run cc -p deepseek           # uses deepseek-main
+#   aim run cc -p deepseek-work      # uses deepseek-work
+#   aim run cc -p glm                # uses glm-main
+#   aim run cc -p glm-coding         # uses glm-coding (with anthropic endpoint)
+#
+# No -k flag needed - provider IS the key selector!
+#
+# List all providers:
+#   aim provider list
+#   Output:
+#   NAME                KEY               VENDOR     ENDPOINT      STATUS
+#   deepseek            deepseek-main     deepseek   base_url     ✓ ready
+#   deepseek-work       deepseek-work     deepseek   base_url     ✓ ready
+#   glm                glm-main          glm        base_url     ✓ ready
+#   glm-coding          glm-coding        glm        anthropic    ✓ ready
+
+# -----------------------------------------------------------------------------
+# 2. PASS ARGUMENTS TO TOOL
+# -----------------------------------------------------------------------------
+# Everything after -- goes directly to tool (no parsing):
+#   aim run cc -p glm -- --help
+#   aim run cc -p glm -- -p "my prompt"
+#   aim run cc -p glm -- /path/to/file
+#   aim run cc -p glm -- bash -c "echo hello"
+
+# -----------------------------------------------------------------------------
+# 3. USE DEFAULT PROVIDER
+# -----------------------------------------------------------------------------
+# No -p flag uses default_provider from settings:
+#   aim run cc                    # uses deepseek (default)
+#   aim run codex -p kimi         # explicit provider
+
+# -----------------------------------------------------------------------------
+# 4. USE ROUTES (FALLBACK CHAINS)
+# -----------------------------------------------------------------------------
+# Smart failover with predefined routes:
+#   aim run cc --route fast       # tries kimi -> deepseek -> glm
+#   aim run cc --route china      # tries glm -> deepseek
+#   aim run cc --route work       # tries deepseek-work -> glm-coding
+
+# -----------------------------------------------------------------------------
+# 5. DRY-RUN (PREVIEW CONFIGURATION)
+# -----------------------------------------------------------------------------
+# See what would be injected without running:
+#   aim run cc -p glm --dry-run
+#   # Outputs: Command, Env, Route details
+
+# -----------------------------------------------------------------------------
+# 6. NATIVE MODE (NO INJECTION)
+# -----------------------------------------------------------------------------
+# Run tool without any env injection:
+#   aim run cc --native -- --help
+
+# -----------------------------------------------------------------------------
+# KEY MANAGEMENT USAGE
+# -----------------------------------------------------------------------------
+# Architecture: cli → provider → key → vendor
+#
+# 0. Init encryption (one-time):
+#    aim crypto init
+#    # Generates random key, saves to config or downloads to file
+#
+# 1. Add a new provider (which creates a key):
+#    aim provider add deepseek-backup --key sk-xxx --vendor deepseek
+#    aim provider add glm-test --key ${GLM_TEST_KEY} --vendor glm
+#
+# 2. List all providers:
+#    aim provider list
+#    # NAME                KEY               VENDOR     STATUS
+#    # deepseek            deepseek-main     deepseek   ✓ ready
+#    # deepseek-backup     deepseek-backup   deepseek   ✓ ready
+#
+# 3. Encrypt a key:
+#    aim key encrypt "sk-your-api-key"
+#    # Outputs: a1b2c3d4e5f6... (encrypted value)
+#    # Then paste to keys: section
+#
+# 4. Decrypt to view original keys:
+#    aim provider list --decrypt
+#    # NAME                KEY               VALUE
+#    # deepseek            deepseek-main     sk-ds-xxx
+#    # deepseek-work       deepseek-work     sk-ds-work
+#
+# 5. Get specific key:
+#    aim provider get deepseek --decrypt
+#    # Output: deepseek-main: sk-ds-xxx
+
+# -----------------------------------------------------------------------------
+# DOCTOR: Diagnostics and troubleshooting
+# -----------------------------------------------------------------------------
+#
+# Basic diagnostics:
+#   aim doctor
+#   # Checks configuration, lists available CLIs, validates providers
+#   # Output:
+#   # ✓ Configuration file loaded
+#   # ✓ Encryption configured
+#   # ✓ 3 vendors defined
+#   # ✓ 6 keys configured
+#   # ⚠ glm-coding: key missing GLM_CODING_KEY env var
+#   # ✓ 3 providers available
+#   # ✓ 3 CLIs found: claude, codex, opencode
+#
+# Advanced diagnostics (trace command execution):
+#   aim doctor "aim run cc -p glm -- --help"
+#   # Traces the command through the resolution chain
+#   # Output:
+#   # Command: aim run cc -p glm -- --help
+#   #
+#   # Resolution:
+#   #   Tool: claude-code (command: claude)
+#   #   Provider: glm
+#   #   Key: glm-main
+#   #   Vendor: glm
+#   #   Endpoint: base_url (https://open.bigmodel.cn/api/paas/v4)
+#   #
+#   # Environment injection:
+#   #   ANTHROPIC_AUTH_TOKEN = <from key>
+#   #   ANTHROPIC_BASE_URL = https://open.bigmodel.cn/api/paas/v4
+#   #
+#   # CLI-level overrides:
+#   #   ✓ glm has override: https://open.bigmodel.cn/api/anthropic
+#   #
+#   # Final execution:
+#   #   claude ANTHROPIC_AUTH_TOKEN=*** ANTHROPIC_BASE_URL=https://... --help
+#   #
+#   # Status: ✓ Ready to execute
+#
+# Verify specific component:
+#   aim doctor --check providers
+#   aim doctor --check keys
+#   aim doctor --check clis
+#   aim doctor --check vendor deepseek
+#   aim doctor --check provider glm-coding
+
+# -----------------------------------------------------------------------------
+# MIGRATION FROM v1.0
+# -----------------------------------------------------------------------------
+# Architecture change: cli → provider → key → vendor
+#
+# Old (v1.0)                    New (v2.0)
+# ----------------------------  ----------------------------
+# keys:                         keys: (list of objects)
+#   kimi:                      - name: kimi-main
+#     provider: kimi              vendor: kimi
+#     key: sk-xxx                 value: sk-xxx
+#                                endpoint: anthropic  # optional
+# providers:                     vendors:
+#   kimi:                        kimi:
+#     base_url: ...                base_url: ...
+#                                  endpoints:
+#                                    anthropic: ...
+#                                providers:
+#                                  kimi:
+#                                    key: kimi-main
+#
+# CLI usage:
+# aim run cc --key kimi         aim run cc -p kimi
+# aim run cc --key work         aim run cc -p deepseek-work
+# aim run cc --cli-args "..."   aim run cc -p kimi -- ...
+
+# -----------------------------------------------------------------------------
+# VARIABLE SUBSTITUTION SYNTAX
+# -----------------------------------------------------------------------------
+# Resolution chain: cli → provider → key → vendor
+#
+# URL resolution priority:
+#   1. cli.vendors.<vendor>.base_url (highest priority)
+#   2. key.endpoint (if specified)
+#   3. vendor.base_url (default)
+#
+# In the `inject:` section, you can use:
+#   ${key}              → The key's value (from provider's key)
+#   ${key.name}         → Key name (e.g., "deepseek-main")
+#   ${vendor.base_url}  → Resolved URL (following priority above)
+#   ${cli.xxx}          → Properties from CLI config
+#   ${env.VAR}          → System environment variable
+#   ${value:-default}   → Value with default fallback
+
+# Example:
+#   inject:
+#     API_KEY: "${key}"                        # Key's actual value
+#     BASE_URL: "${vendor.base_url}"           # Resolved URL
+#     MODEL: "${cli.model:-gpt-4}"             # CLI's model or default
+#     USER: "${env.USER:-unknown}"             # System USER or default
+#     STATIC: "hardcoded-value"                # Static value
+
+# -----------------------------------------------------------------------------
+# ENDPOINT USAGE EXAMPLE
+# -----------------------------------------------------------------------------
+# Keys can use alternative endpoints defined in vendor:
+#
+# vendor:
+#   glm:
+#     base_url: https://open.bigmodel.cn/api/paas/v4
+#     endpoints:
+#       anthropic: https://open.bigmodel.cn/api/anthropic
+#
+# key:
+#   - name: glm-coding
+#     vendor: glm
+#     endpoint: anthropic    # Uses https://open.bigmodel.cn/api/anthropic
+#     value: sk-xxx
+#
+# This allows same key with different URLs for different tools!
+
+# ============================================================================
