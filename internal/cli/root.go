@@ -29,4 +29,5 @@ func Execute() {
 func init() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.AddCommand(runCmd)
+	rootCmd.AddCommand(configCmd)
 }
