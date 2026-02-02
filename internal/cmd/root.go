@@ -47,6 +47,7 @@ Examples:
 
   # Initialize configuration
   aim config init`,
+	Version:       Version,
 	SilenceUsage:  true,
 	SilenceErrors: false,
 }
@@ -58,6 +59,9 @@ func Execute() error {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+
+	// Set version template to display additional build information
+	rootCmd.SetVersionTemplate(fmt.Sprintf("AIM version %s\nGit commit: %s\nBuilt: %s\n", Version, GitCommit, BuildDate))
 
 	// Global flags
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default: ~/.config/aim/config.yaml)")
