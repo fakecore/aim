@@ -9,6 +9,7 @@ const (
 	ToolTypeClaudeCode ToolType = "claude-code"
 	ToolTypeCC         ToolType = "cc"
 	ToolTypeCodex      ToolType = "codex"
+	ToolTypeOpencode   ToolType = "opencode"
 )
 
 // ToolConfig tool configuration structure
@@ -35,6 +36,11 @@ var ToolsRegistry = map[ToolType]ToolConfig{
 		Type:      ToolTypeCodex,
 		Aliases:   []string{},
 		Canonical: string(ToolTypeCodex),
+	},
+	ToolTypeOpencode: {
+		Type:      ToolTypeOpencode,
+		Aliases:   []string{},
+		Canonical: string(ToolTypeOpencode),
 	},
 }
 

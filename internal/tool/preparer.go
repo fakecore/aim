@@ -140,6 +140,48 @@ func (c *CodexEnvironmentPreparer) ValidateEnvironment(toolName string, provider
 	return nil
 }
 
+// OpencodeEnvironmentPreparer Environment preparer for OpenCode tool
+type OpencodeEnvironmentPreparer struct{}
+
+// NewOpencodeEnvironmentPreparer Creates an OpenCode environment preparer
+func NewOpencodeEnvironmentPreparer() *OpencodeEnvironmentPreparer {
+	return &OpencodeEnvironmentPreparer{}
+}
+
+// PrepareEnvironment Prepares the environment for OpenCode tool
+// Note: Environment variables are handled by the resolver based on config file env_mapping
+// This preparer only handles tool-specific command line arguments
+func (o *OpencodeEnvironmentPreparer) PrepareEnvironment(runtimeConfig *config.RuntimeConfig) ([]string, map[string]string, error) {
+	if runtimeConfig.Tool != string(ToolTypeOpencode) {
+		return nil, nil, fmt.Errorf("opencode preparer does not support tool: %s", runtimeConfig.Tool)
+	}
+
+	// OpenCode uses -m provider/model format for model selection
+	// Environment variables are handled by resolver's config file env_mapping
+	args := []string{}
+	envVars := make(map[string]string) // Empty - rely on config file env_mapping
+
+	// If both provider and model are specified, use -m provider/model format
+	if runtimeConfig.Provider != "" && runtimeConfig.Model != "" {
+		args = append(args, "-m", fmt.Sprintf("%s/%s", runtimeConfig.Provider, runtimeConfig.Model))
+	} else if runtimeConfig.Model != "" {
+		// Model only (provider from config or in model string)
+		args = append(args, "-m", runtimeConfig.Model)
+	}
+
+	return args, envVars, nil
+}
+
+// ValidateEnvironment Validates the environment configuration for OpenCode tool
+func (o *OpencodeEnvironmentPreparer) ValidateEnvironment(toolName string, provider string) error {
+	if toolName != string(ToolTypeOpencode) {
+		return fmt.Errorf("opencode preparer does not support tool: %s", toolName)
+	}
+
+	// No provider validation needed - configuration system is flexible
+	return nil
+}
+
 // EnvironmentPreparerManager Environment preparer manager
 type EnvironmentPreparerManager struct {
 	preparers map[string]EnvironmentPreparer // Use standard name as key
@@ -149,11 +191,13 @@ type EnvironmentPreparerManager struct {
 func NewEnvironmentPreparerManager() *EnvironmentPreparerManager {
 	defaultPreparer := NewDefaultEnvironmentPreparer()
 	codexPreparer := NewCodexEnvironmentPreparer()
+	opencodePreparer := NewOpencodeEnvironmentPreparer()
 
 	return &EnvironmentPreparerManager{
 		preparers: map[string]EnvironmentPreparer{
 			string(ToolTypeClaudeCode): defaultPreparer, // Use standard name
 			string(ToolTypeCodex):      codexPreparer,
+			string(ToolTypeOpencode):   opencodePreparer,
 		},
 	}
 }

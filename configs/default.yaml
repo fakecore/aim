@@ -116,3 +116,29 @@ tools:
         provider: qwen
         field_mapping:
           QWEN_API_KEY: keys.{current_key}.key
+
+  opencode:
+    command: opencode
+    enabled: true
+    field_mapping:
+      OPENAI_API_KEY: keys.{current_key}.key
+      OPENAI_BASE_URL: profiles.{current_profile}.base_url
+    profiles:
+      deepseek:
+        provider: deepseek
+        base_url: https://api.deepseek.com/v1
+      glm:
+        provider: glm
+        base_url: https://open.bigmodel.cn/api/paas/v4
+      glm-coding:
+        provider: glm-coding
+        base_url: https://open.bigmodel.cn/api/coding/paas/v4
+      kimi:
+        provider: kimi
+        base_url: https://api.moonshot.cn/v1
+      qwen:
+        provider: qwen
+        base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      openai:
+        provider: openai
+        base_url: https://api.openai.com/v1

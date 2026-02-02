@@ -67,7 +67,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 
 	// Check if tool is supported
 	if !tool.IsToolSupported(canonicalToolName) {
-		return fmt.Errorf("unsupported tool: %s. Currently supported tools: [codex claude-code (cc)]", toolName)
+		return fmt.Errorf("unsupported tool: %s. Currently supported tools: [codex claude-code (cc) opencode]", toolName)
 	}
 
 	// If native mode is enabled, skip all configuration
@@ -182,12 +182,15 @@ func runRun(cmd *cobra.Command, args []string) error {
 
 	// Add additional arguments from --cli-args flag
 	// Split each value on spaces to support space-separated arguments
+	// IMPORTANT: Prepend cli-args before tool args (e.g., -p must come before prompt)
 	if len(additionalArgs) > 0 {
+		var cliArgs []string
 		for _, argGroup := range additionalArgs {
 			// Split on whitespace and append non-empty parts
 			parts := splitWhitespace(argGroup)
-			toolArgs = append(toolArgs, parts...)
+			cliArgs = append(cliArgs, parts...)
 		}
+		toolArgs = append(cliArgs, toolArgs...)
 	}
 
 	// Show what we're running
@@ -307,7 +310,7 @@ func runNative(cmd *cobra.Command, args []string, canonicalToolName string) erro
 
 	// Check if tool is supported
 	if !tool.IsToolSupported(canonicalToolName) {
-		return fmt.Errorf("unsupported tool: %s. Currently supported tools: [codex claude-code (cc)]", toolName)
+		return fmt.Errorf("unsupported tool: %s. Currently supported tools: [codex claude-code (cc) opencode]", toolName)
 	}
 
 	// Get tool command
