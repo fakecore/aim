@@ -38,14 +38,39 @@
 - **数组字段**：项目级追加到全局（去重）
 - **显式禁用**：`extends: false` 完全覆盖
 
-### 注入方式
+### 各工具注入方式
 
-| 工具 | 环境变量 | 说明 |
-|-----|---------|------|
-| Claude Code | `CLAUDE_SYSTEM_PROMPT` | 追加到 system prompt |
-| Codex | `CODEX_INSTRUCTIONS` | 官方支持 |
-| Gemini CLI | `GEMINI_SYSTEM_PROMPT` | 需验证 |
-| Opencode | `OPENCODE_SYSTEM_PROMPT` | 参考 OpenAI 格式 |
+| 工具 | 方式 | 参数/环境变量 | 说明 |
+|-----|------|-------------|------|
+| **Claude Code** | CLI 参数 | `--system-prompt <prompt>` | 完全替换系统提示，需保留原身份 |
+| **Codex** | 配置文件 | `~/.codex/instructions.md` | 自动读取，支持项目级 `codex.md` |
+| **Gemini** | 环境变量 | `GEMINI_SYSTEM_MD=<path>` | 指向 markdown 文件路径 |
+| **Opencode** | 待验证 | 可能支持类似 OpenAI 格式 | 需进一步确认 |
+
+### 注入策略差异
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Claude Code                                                    │
+│  ├── 方式: --system-prompt 参数                                 │
+│  ├── 注意: 完全替换默认提示，需手动包含核心身份                  │
+│  └── AIM处理: 合并基础提示 + 用户指令 → 生成完整提示             │
+├─────────────────────────────────────────────────────────────────┤
+│  Codex                                                          │
+│  ├── 方式: ~/.codex/instructions.md 或 ./codex.md               │
+│  ├── 注意: 自动读取，无需参数                                    │
+│  └── AIM处理: 生成/同步 instructions.md 文件                     │
+├─────────────────────────────────────────────────────────────────┤
+│  Gemini                                                         │
+│  ├── 方式: GEMINI_SYSTEM_MD 环境变量指向文件                     │
+│  ├── 注意: 文件路径，非直接内容                                  │
+│  └── AIM处理: 生成临时文件，设置环境变量                         │
+├─────────────────────────────────────────────────────────────────┤
+│  Opencode                                                       │
+│  ├── 方式: 待验证                                               │
+│  └── AIM处理: TBD                                               │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -503,61 +528,287 @@ git commit -m "feat(instructions): add prompt renderer with template support"
 
 ---
 
-### Task 5: 扩展 Tools 定义支持环境变量注入
+### Task 5: 扩展 Tools 定义支持指令注入
 
 **Files:**
 - Modify: `internal/tools/tools.go`
 - Modify: `internal/cli/run.go:92-105`
 
-**Step 1: 扩展 Tool 结构**
+**Step 1: 扩展 Tool 结构（支持多种注入方式）**
 
 ```go
+// InjectMode defines how instructions are injected into the tool
+type InjectMode string
+
+const (
+	InjectModeEnv       InjectMode = "env"       // Environment variable
+	InjectModeArg       InjectMode = "arg"       // CLI argument
+	InjectModeFile      InjectMode = "file"      // Generate file (e.g., codex.md)
+	InjectModeEnvFile   InjectMode = "envfile"   // Environment variable points to file
+	InjectModeAgentFile InjectMode = "agentfile" // Create agent file (opencode)
+)
+
 // Tool represents a CLI tool configuration
 type Tool struct {
 	Name     string
 	Command  string
 	Protocol string
 
-	// Instructions injection
-	InstructionsEnv string // Environment variable name for instructions
+	// Instructions injection configuration
+	Instructions InstructionsConfig
+}
+
+// InstructionsConfig defines how to inject instructions
+type InstructionsConfig struct {
+	Mode       InjectMode // How to inject
+	EnvName    string     // For env/envfile mode: environment variable name
+	ArgName    string     // For arg mode: CLI flag name (e.g., --system-prompt)
+	FilePath   string     // For file mode: where to write (e.g., codex.md)
+	BasePrompt string     // For arg mode: base system prompt to preserve tool identity
+	AgentDir   string     // For agentfile mode: agent directory (e.g., .opencode/agents)
+	AgentName  string     // For agentfile mode: agent name to create
 }
 
 // BuiltinTools contains the built-in tool definitions
 var BuiltinTools = map[string]Tool{
 	"claude-code": {
-		Name:            "claude-code",
-		Command:         "claude",
-		Protocol:        "anthropic",
-		InstructionsEnv: "CLAUDE_SYSTEM_PROMPT",
+		Name:     "claude-code",
+		Command:  "claude",
+		Protocol: "anthropic",
+		Instructions: InstructionsConfig{
+			Mode:    InjectModeArg,
+			ArgName: "--system-prompt",
+			BasePrompt: `你是 Claude Code，Anthropic 的官方 CLI 编程助手。
+你拥有各种技能（skills）来指导开发工作流程。
+
+用户自定义偏好：
+`,
+		},
 	},
 	"codex": {
-		Name:            "codex",
-		Command:         "codex",
-		Protocol:        "openai",
-		InstructionsEnv: "CODEX_INSTRUCTIONS",
-	},
-	"opencode": {
-		Name:            "opencode",
-		Command:         "opencode",
-		Protocol:        "openai",
-		InstructionsEnv: "OPENCODE_SYSTEM_PROMPT",
+		Name:     "codex",
+		Command:  "codex",
+		Protocol: "openai",
+		Instructions: InstructionsConfig{
+			Mode:     InjectModeFile,
+			FilePath: "codex.md", // Writes to ./codex.md or ~/.codex/instructions.md
+		},
 	},
 	"gemini": {
-		Name:            "gemini",
-		Command:         "gemini",
-		Protocol:        "openai",
-		InstructionsEnv: "GEMINI_SYSTEM_PROMPT",
+		Name:     "gemini",
+		Command:  "gemini",
+		Protocol: "openai",
+		Instructions: InstructionsConfig{
+			Mode:    InjectModeEnvFile,
+			EnvName: "GEMINI_SYSTEM_MD",
+		},
+	},
+	"opencode": {
+		Name:     "opencode",
+		Command:  "opencode",
+		Protocol: "openai",
+		Instructions: InstructionsConfig{
+			Mode:      InjectModeAgentFile,
+			AgentDir:  ".opencode/agents", // Create agent file in this directory
+			AgentName: "aim",              // Use --agent aim to activate
+		},
 	},
 }
 ```
 
-**Step 2: 修改 execute 函数注入指令**
+**Step 2: 创建指令注入器**
+
+```go
+// internal/instructions/injector.go
+
+package instructions
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+)
+
+// Injector handles injecting instructions into different tools
+type Injector struct {
+	renderer *Renderer
+}
+
+// NewInjector creates a new injector
+func NewInjector() *Injector {
+	return &Injector{
+		renderer: NewRenderer(),
+	}
+}
+
+// InjectResult contains the injection result
+type InjectResult struct {
+	EnvVars []string // Additional env vars to set
+	Args    []string // Additional CLI args to prepend
+	Cleanup func()   // Cleanup function (for temp files)
+}
+
+// Inject prepares instructions for the given tool
+func (i *Injector) Inject(tool *tools.Tool, cfg *Config, workDir string) (*InjectResult, error) {
+	if cfg == nil || tool.Instructions.Mode == "" {
+		return &InjectResult{}, nil
+	}
+
+	// Check if disabled for this tool
+	if override, ok := cfg.Tools[tool.Name]; ok && override.Disable {
+		return &InjectResult{}, nil
+	}
+
+	// Render the prompt
+	prompt, err := i.renderer.Render(cfg, tool.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	if prompt == "" {
+		return &InjectResult{}, nil
+	}
+
+	switch tool.Instructions.Mode {
+	case tools.InjectModeEnv:
+		return i.injectViaEnv(tool, prompt)
+	case tools.InjectModeArg:
+		return i.injectViaArg(tool, prompt)
+	case tools.InjectModeFile:
+		return i.injectViaFile(tool, prompt, workDir)
+	case tools.InjectModeEnvFile:
+		return i.injectViaEnvFile(tool, prompt, workDir)
+	case tools.InjectModeAgentFile:
+		return i.injectViaAgentFile(tool, prompt, workDir)
+	default:
+		return &InjectResult{}, nil
+	}
+}
+
+func (i *Injector) injectViaEnv(tool *tools.Tool, prompt string) (*InjectResult, error) {
+	return &InjectResult{
+		EnvVars: []string{fmt.Sprintf("%s=%s", tool.Instructions.EnvName, prompt)},
+	}, nil
+}
+
+func (i *Injector) injectViaArg(tool *tools.Tool, prompt string) (*InjectResult, error) {
+	// For Claude Code: combine base prompt + user instructions
+	fullPrompt := tool.Instructions.BasePrompt + prompt
+	return &InjectResult{
+		Args: []string{tool.Instructions.ArgName, fullPrompt},
+	}, nil
+}
+
+func (i *Injector) injectViaFile(tool *tools.Tool, prompt string, workDir string) (*InjectResult, error) {
+	// For Codex: write to codex.md in workDir
+	filePath := filepath.Join(workDir, tool.Instructions.FilePath)
+
+	// Check if file already exists
+	if _, err := os.Stat(filePath); err == nil {
+		// File exists, backup it
+		backupPath := filePath + ".aim-backup"
+		os.Rename(filePath, backupPath)
+
+		if err := os.WriteFile(filePath, []byte(prompt), 0644); err != nil {
+			os.Rename(backupPath, filePath) // Restore on failure
+			return nil, err
+		}
+
+		return &InjectResult{
+			Cleanup: func() {
+				os.Remove(filePath)
+				os.Rename(backupPath, filePath)
+			},
+		}, nil
+	}
+
+	// File doesn't exist, create it
+	if err := os.WriteFile(filePath, []byte(prompt), 0644); err != nil {
+		return nil, err
+	}
+
+	return &InjectResult{
+		Cleanup: func() { os.Remove(filePath) },
+	}, nil
+}
+
+func (i *Injector) injectViaEnvFile(tool *tools.Tool, prompt string, workDir string) (*InjectResult, error) {
+	// For Gemini: write to temp file, set env var to point to it
+	tmpFile, err := os.CreateTemp(workDir, ".aim-gemini-*.md")
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := tmpFile.WriteString(prompt); err != nil {
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
+		return nil, err
+	}
+	tmpFile.Close()
+
+	return &InjectResult{
+		EnvVars: []string{fmt.Sprintf("%s=%s", tool.Instructions.EnvName, tmpFile.Name())},
+		Cleanup: func() { os.Remove(tmpFile.Name()) },
+	}, nil
+}
+
+func (i *Injector) injectViaAgentFile(tool *tools.Tool, prompt string, workDir string) (*InjectResult, error) {
+	// For Opencode: create agent file in .opencode/agents/aim.md
+	agentDir := filepath.Join(workDir, tool.Instructions.AgentDir)
+	agentFile := filepath.Join(agentDir, tool.Instructions.AgentName+".md")
+
+	// Ensure directory exists
+	if err := os.MkdirAll(agentDir, 0755); err != nil {
+		return nil, err
+	}
+
+	// Check if file already exists
+	if _, err := os.Stat(agentFile); err == nil {
+		// File exists, backup it
+		backupPath := agentFile + ".aim-backup"
+		os.Rename(agentFile, backupPath)
+
+		// Write agent file with YAML frontmatter
+		content := fmt.Sprintf("---\nname: %s\ndescription: AIM injected agent\n---\n\n%s",
+			tool.Instructions.AgentName, prompt)
+
+		if err := os.WriteFile(agentFile, []byte(content), 0644); err != nil {
+			os.Rename(backupPath, agentFile) // Restore on failure
+			return nil, err
+		}
+
+		return &InjectResult{
+			Args: []string{"--agent", tool.Instructions.AgentName},
+			Cleanup: func() {
+				os.Remove(agentFile)
+				os.Rename(backupPath, agentFile)
+			},
+		}, nil
+	}
+
+	// File doesn't exist, create it
+	content := fmt.Sprintf("---\nname: %s\ndescription: AIM injected agent\n---\n\n%s",
+		tool.Instructions.AgentName, prompt)
+
+	if err := os.WriteFile(agentFile, []byte(content), 0644); err != nil {
+		return nil, err
+	}
+
+	return &InjectResult{
+		Args: []string{"--agent", tool.Instructions.AgentName},
+		Cleanup: func() { os.Remove(agentFile) },
+	}, nil
+}
+```
+
+**Step 3: 修改 execute 函数支持注入**
 
 ```go
 func execute(tool *tools.Tool, acc *config.ResolvedAccount, cfg *instructions.Config,
 	timeout time.Duration, args []string, native bool) error {
 
 	env := os.Environ()
+	var cleanup func()
 
 	if !native {
 		// Protocol env vars
@@ -571,20 +822,27 @@ func execute(tool *tools.Tool, acc *config.ResolvedAccount, cfg *instructions.Co
 		}
 
 		// Instructions injection
-		if tool.InstructionsEnv != "" && cfg != nil {
-			renderer := instructions.NewRenderer()
-			prompt, err := renderer.Render(cfg, tool.Name)
-			if err == nil && prompt != "" {
-				env = append(env, fmt.Sprintf("%s=%s", tool.InstructionsEnv, prompt))
+		if cfg != nil && tool.Instructions.Mode != "" {
+			injector := instructions.NewInjector()
+			result, err := injector.Inject(tool, cfg, ".")
+			if err == nil && result != nil {
+				env = append(env, result.EnvVars...)
+				args = append(result.Args, args...) // Prepend injection args
+				cleanup = result.Cleanup
 			}
 		}
+	}
+
+	// Ensure cleanup runs
+	if cleanup != nil {
+		defer cleanup()
 	}
 
 	// ... rest of the function
 }
 ```
 
-**Step 3: 修改 run 函数传递 instructions**
+**Step 4: 修改 run 函数传递 instructions**
 
 ```go
 func run(cmd *cobra.Command, args []string) error {
@@ -640,11 +898,20 @@ func printDryRun(tool *tools.Tool, acc *config.ResolvedAccount,
 	}
 
 	// Show instructions
-	if tool.InstructionsEnv != "" && instr != nil {
-		renderer := instructions.NewRenderer()
-		prompt, err := renderer.Render(instr, tool.Name)
-		if err == nil && prompt != "" {
-			fmt.Printf("  %s=%s...\n", tool.InstructionsEnv, prompt[:min(len(prompt), 50)])
+	if tool.Instructions.Mode != "" && instr != nil {
+		injector := instructions.NewInjector()
+		result, err := injector.Inject(tool, instr, ".")
+		if err == nil && result != nil {
+			for _, env := range result.EnvVars {
+				if len(env) > 50 {
+					fmt.Printf("  %s...\n", env[:50])
+				} else {
+					fmt.Printf("  %s\n", env)
+				}
+			}
+			if len(result.Args) > 0 {
+				fmt.Printf("  Args: %v\n", result.Args)
+			}
 		}
 	}
 
@@ -918,12 +1185,36 @@ git commit -m "docs: add unified AI instructions documentation"
 完成以上任务后，AIM 将具备以下能力：
 
 1. **配置分层**: 全局 + 项目级，灵活覆盖
-2. **自动注入**: 启动工具时自动通过环境变量注入
+2. **自动注入**: 根据工具类型选择最佳注入方式
 3. **多工具支持**: Claude、Codex、Gemini、Opencode 统一配置
 4. **模板渲染**: 支持工具级自定义 prepend/append
 5. **透明可控**: `--dry-run` 可查看实际注入内容
 
 **关键设计决策**:
 - 使用 YAML frontmatter + Markdown 兼顾结构和自由文本
-- 环境变量注入无需修改 AI 工具本身
+- 五种注入模式适配不同工具：arg/env/file/envfile/agentfile
 - 项目级 `extends` 控制继承行为，显式优于隐式
+- Claude Code 保留基础身份提示，避免功能丢失
+- Opencode 通过 agent 文件实现自定义指令
+
+---
+
+## 各工具注入方式汇总
+
+| 工具 | 注入方式 | 具体实现 | 注意事项 |
+|-----|---------|---------|---------|
+| **Claude Code** | CLI 参数 | `--system-prompt <prompt>` | 完全替换默认提示，需保留核心身份 |
+| **Codex** | 文件 | `codex.md` 或 `~/.codex/instructions.md` | 自动读取，需处理文件已存在的情况 |
+| **Gemini** | 环境变量+文件 | `GEMINI_SYSTEM_MD=<path>` | 指向文件路径，非直接内容 |
+| **Opencode** | Agent 文件 | `.opencode/agents/aim.md` + `--agent aim` | 通过自定义 agent 注入系统提示 |
+
+---
+
+## 参考资源
+
+- [Gemini CLI Custom System Prompts](https://jduncan.io/blog/2025-11-13-gemini-cli-custom-system-prompts/)
+- [Gemini CLI Configuration](https://geminicli.com/docs/get-started/configuration/)
+- [Codex CLI Config Basics](https://developers.openai.com/codex/config-basic/)
+- [Codex CLI Official Docs](https://developers.openai.com/codex/cli/)
+- [Opencode Agents Documentation](https://opencode.ai/docs/agents/)
+- [Opencode CLI Documentation](https://opencode.ai/docs/cli/)
