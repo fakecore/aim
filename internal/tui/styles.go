@@ -15,29 +15,26 @@ var (
 	cyan        = lipgloss.Color("#7dcfff")
 	brightBlack = lipgloss.Color("#414868")
 
-	// Base style with background
-	baseStyle = lipgloss.NewStyle().Background(background)
-
-	titleStyle       = baseStyle.Copy().Bold(true).Foreground(blue)
-	tabStyle         = baseStyle.Copy().Padding(0, 2).Foreground(brightBlack)
-	activeTabStyle   = baseStyle.Copy().Padding(0, 2).Bold(true).Foreground(blue).Underline(true)
-	selectedStyle    = baseStyle.Copy().Bold(true).Foreground(foreground).Background(selectionBg)
-	helpStyle        = baseStyle.Copy().Foreground(brightBlack).Italic(true)
-	footerStyle      = baseStyle.Copy().Foreground(brightBlack).Padding(1, 0)
-	leftPanelStyle   = baseStyle.Copy().Width(30).Padding(1)
-	rightPanelStyle  = baseStyle.Copy().Padding(1)
-	placeholderStyle = baseStyle.Copy().Foreground(brightBlack).Padding(2)
+	titleStyle       = lipgloss.NewStyle().Background(background).Bold(true).Foreground(blue)
+	tabStyle         = lipgloss.NewStyle().Background(background).Padding(0, 2).Foreground(brightBlack)
+	activeTabStyle   = lipgloss.NewStyle().Background(background).Padding(0, 2).Bold(true).Foreground(blue).Underline(true)
+	selectedStyle    = lipgloss.NewStyle().Background(background).Bold(true).Foreground(foreground).Background(selectionBg)
+	helpStyle        = lipgloss.NewStyle().Background(background).Foreground(brightBlack).Italic(true)
+	footerStyle      = lipgloss.NewStyle().Background(background).Foreground(brightBlack).Padding(1, 0)
+	leftPanelStyle   = lipgloss.NewStyle().Background(background).Width(30).Padding(1)
+	rightPanelStyle  = lipgloss.NewStyle().Background(background).Padding(1)
+	placeholderStyle = lipgloss.NewStyle().Background(background).Foreground(brightBlack).Padding(2)
 
 	// Status indicators
-	statusOKStyle    = baseStyle.Copy().Foreground(green)
-	statusWarnStyle  = baseStyle.Copy().Foreground(yellow)
-	statusErrorStyle = baseStyle.Copy().Foreground(red)
+	statusOKStyle    = lipgloss.NewStyle().Background(background).Foreground(green)
+	statusWarnStyle  = lipgloss.NewStyle().Background(background).Foreground(yellow)
+	statusErrorStyle = lipgloss.NewStyle().Background(background).Foreground(red)
 
 	// Key/value display
-	keyStyle   = baseStyle.Copy().Foreground(cyan)
-	valueStyle = baseStyle.Copy().Foreground(foreground)
+	keyStyle   = lipgloss.NewStyle().Background(background).Foreground(cyan)
+	valueStyle = lipgloss.NewStyle().Background(background).Foreground(foreground)
 
 	// Edit mode
-	editLabelStyle = baseStyle.Copy().Foreground(magenta)
-	editInputStyle = baseStyle.Copy().Foreground(foreground).Background(selectionBg)
+	editLabelStyle = lipgloss.NewStyle().Background(background).Foreground(magenta)
+	editInputStyle = lipgloss.NewStyle().Background(background).Foreground(foreground).Background(selectionBg)
 )
