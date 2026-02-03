@@ -12,20 +12,47 @@ func TestIntegration_FullWorkflow(t *testing.T) {
 	setup := NewTestSetup(t, `
 version: "2"
 
+tools:
+  cc:
+    protocol: anthropic
+  codex:
+    protocol: openai
+
 vendors:
-  glm-beta:
-    base: glm
-    protocols:
-      anthropic: https://beta.bigmodel.cn/api/anthropic
+  glm:
+    endpoints:
+      anthropic:
+        url: https://open.bigmodel.cn/api/anthropic
+        default_model: glm-4.7
+  deepseek:
+    endpoints:
+      anthropic:
+        url: https://api.deepseek.com/anthropic
+        default_model: deepseek-chat
+      openai:
+        url: https://api.deepseek.com/v1
+        default_model: deepseek-chat
+
+keys:
+  deepseek:
+    value: ${DEEPSEEK_API_KEY}
+    vendor: deepseek
+  glm:
+    value: ${GLM_API_KEY}
+    vendor: glm
+  glm-coding:
+    value: ${GLM_CODING_KEY}
+    vendor: glm
 
 accounts:
-  deepseek: ${DEEPSEEK_API_KEY}
-  glm: ${GLM_API_KEY}
+  deepseek:
+    key: deepseek
+  glm:
+    key: glm
   glm-coding:
-    key: ${GLM_CODING_KEY}
-    vendor: glm-beta
+    key: glm-coding
 
-options:
+settings:
   default_account: deepseek
 `)
 
@@ -46,11 +73,11 @@ options:
 	assert.Contains(t, result.Stdout, "sk-glm-x...") // truncated to 8 chars
 	assert.Contains(t, result.Stdout, "https://open.bigmodel.cn/api/anthropic")
 
-	// Test 3: Custom vendor (glm-coding with beta endpoint)
+	// Test 3: Account with same key but different usage
 	result = setup.Run("run", "--dry-run", "-a", "glm-coding", "cc")
 	require.Equal(t, 0, result.ExitCode)
 	assert.Contains(t, result.Stdout, "sk-glm-c...") // truncated to 8 chars
-	assert.Contains(t, result.Stdout, "https://beta.bigmodel.cn/api/anthropic")
+	assert.Contains(t, result.Stdout, "https://open.bigmodel.cn/api/anthropic")
 
 	// Test 4: Different tool (codex uses openai protocol)
 	result = setup.Run("run", "--dry-run", "-a", "deepseek", "codex")

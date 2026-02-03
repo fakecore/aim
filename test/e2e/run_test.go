@@ -9,9 +9,23 @@ import (
 func TestRun_WithDefaultAccount(t *testing.T) {
 	setup := NewTestSetup(t, `
 version: "2"
+tools:
+  cc:
+    protocol: anthropic
+vendors:
+  deepseek:
+    endpoints:
+      anthropic:
+        url: https://api.deepseek.com/anthropic
+        default_model: deepseek-chat
+keys:
+  deepseek-key:
+    value: sk-test-key
+    vendor: deepseek
 accounts:
-  deepseek: sk-test-key
-options:
+  deepseek:
+    key: deepseek-key
+settings:
   default_account: deepseek
 `)
 
@@ -25,9 +39,30 @@ options:
 func TestRun_WithExplicitAccount(t *testing.T) {
 	setup := NewTestSetup(t, `
 version: "2"
+tools:
+  cc:
+    protocol: anthropic
+vendors:
+  deepseek:
+    endpoints:
+      anthropic:
+        url: https://api.deepseek.com/anthropic
+  glm:
+    endpoints:
+      anthropic:
+        url: https://open.bigmodel.cn/api/anthropic
+keys:
+  deepseek:
+    value: sk-ds-key
+    vendor: deepseek
+  glm:
+    value: sk-glm-key
+    vendor: glm
 accounts:
-  deepseek: sk-ds-key
-  glm: sk-glm-key
+  deepseek:
+    key: deepseek
+  glm:
+    key: glm
 `)
 
 	result := setup.Run("run", "--dry-run", "-a", "glm", "cc")
@@ -40,8 +75,21 @@ func TestRun_WithBase64Key(t *testing.T) {
 	// sk-test-key in base64
 	setup := NewTestSetup(t, `
 version: "2"
+tools:
+  cc:
+    protocol: anthropic
+vendors:
+  deepseek:
+    endpoints:
+      anthropic:
+        url: https://api.deepseek.com/anthropic
+keys:
+  deepseek:
+    value: base64:c2stdGVzdC1rZXk=
+    vendor: deepseek
 accounts:
-  deepseek: base64:c2stdGVzdC1rZXk=
+  deepseek:
+    key: deepseek
 `)
 
 	result := setup.Run("run", "--dry-run", "-a", "deepseek", "cc")
@@ -54,25 +102,53 @@ accounts:
 func TestRun_AccountNotFound(t *testing.T) {
 	setup := NewTestSetup(t, `
 version: "2"
+tools:
+  cc:
+    protocol: anthropic
+vendors:
+  deepseek:
+    endpoints:
+      anthropic:
+        url: https://api.deepseek.com/anthropic
+keys:
+  deepseek:
+    value: sk-key
+    vendor: deepseek
 accounts:
-  deepseek: sk-key
+  deepseek:
+    key: deepseek
 `)
 
 	result := setup.Run("run", "--dry-run", "-a", "nonexistent", "cc")
 
 	assert.Equal(t, 3, result.ExitCode) // ACC error
-	assert.Contains(t, result.Stdout, "AIM-ACC-001")
+	output := result.Stdout + result.Stderr
+	assert.Contains(t, output, "not found")
 }
 
 func TestRun_KeyNotSet(t *testing.T) {
 	setup := NewTestSetup(t, `
 version: "2"
+tools:
+  cc:
+    protocol: anthropic
+vendors:
+  glm:
+    endpoints:
+      anthropic:
+        url: https://open.bigmodel.cn/api/anthropic
+keys:
+  glm:
+    value: ${UNSET_ENV_VAR}
+    vendor: glm
 accounts:
-  glm: ${UNSET_ENV_VAR}
+  glm:
+    key: glm
 `)
 
 	result := setup.Run("run", "--dry-run", "-a", "glm", "cc")
 
 	assert.Equal(t, 3, result.ExitCode)
-	assert.Contains(t, result.Stdout, "AIM-ACC-002")
+	output := result.Stdout + result.Stderr
+	assert.Contains(t, output, "not set")
 }

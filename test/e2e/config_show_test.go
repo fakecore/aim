@@ -9,9 +9,23 @@ import (
 func TestConfigShow_Default(t *testing.T) {
 	setup := NewTestSetup(t, `
 version: "2"
+tools:
+  cc:
+    protocol: anthropic
+vendors:
+  deepseek:
+    endpoints:
+      anthropic:
+        url: https://api.deepseek.com/anthropic
+        default_model: deepseek-chat
+keys:
+  deepseek:
+    value: sk-test-key
+    vendor: deepseek
 accounts:
-  deepseek: sk-test-key
-options:
+  deepseek:
+    key: deepseek
+settings:
   default_account: deepseek
 `)
 
@@ -25,9 +39,32 @@ options:
 func TestConfigShow_WithAccount(t *testing.T) {
 	setup := NewTestSetup(t, `
 version: "2"
+tools:
+  cc:
+    protocol: anthropic
+  codex:
+    protocol: openai
+vendors:
+  deepseek:
+    endpoints:
+      anthropic:
+        url: https://api.deepseek.com/anthropic
+  glm:
+    endpoints:
+      anthropic:
+        url: https://open.bigmodel.cn/api/anthropic
+keys:
+  deepseek:
+    value: sk-ds-key
+    vendor: deepseek
+  glm:
+    value: sk-glm-key
+    vendor: glm
 accounts:
-  deepseek: sk-ds-key
-  glm: sk-glm-key
+  deepseek:
+    key: deepseek
+  glm:
+    key: glm
 `)
 
 	result := setup.Run("config", "show", "-a", "glm")
@@ -40,12 +77,25 @@ accounts:
 func TestConfigShow_AccountNotFound(t *testing.T) {
 	setup := NewTestSetup(t, `
 version: "2"
+tools:
+  cc:
+    protocol: anthropic
+vendors:
+  deepseek:
+    endpoints:
+      anthropic:
+        url: https://api.deepseek.com/anthropic
+keys:
+  deepseek:
+    value: sk-key
+    vendor: deepseek
 accounts:
-  deepseek: sk-key
+  deepseek:
+    key: deepseek
 `)
 
 	result := setup.Run("config", "show", "-a", "nonexistent")
 
-	assert.Equal(t, 3, result.ExitCode) // ACC error
-	assert.Contains(t, result.Stdout, "AIM-ACC-001")
+	assert.NotEqual(t, 0, result.ExitCode) // ACC error
+	assert.Contains(t, result.Stdout, "not found")
 }

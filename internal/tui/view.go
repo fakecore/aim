@@ -173,13 +173,21 @@ func (m Model) renderPreview(height int) string {
 	name := m.accounts[m.selectedIdx]
 	acc := m.config.Accounts[name]
 
+	// Get vendor from the referenced key
+	vendorName := "<no key>"
+	if acc.Key != "" {
+		if key, ok := m.config.Keys[acc.Key]; ok {
+			vendorName = key.Vendor
+		}
+	}
+
 	var lines []string
 	lines = append(lines, titleStyle.Render("LIVE PREVIEW"))
 	lines = append(lines, "")
 
 	// Account info
 	lines = append(lines, keyStyle.Render("Account: ")+valueStyle.Render(name))
-	lines = append(lines, keyStyle.Render("Vendor:  ")+valueStyle.Render(acc.Vendor))
+	lines = append(lines, keyStyle.Render("Vendor:  ")+valueStyle.Render(vendorName))
 	lines = append(lines, "")
 
 	// Supported tools
@@ -190,8 +198,10 @@ func (m Model) renderPreview(height int) string {
 	lines = append(lines, lipgloss.NewStyle().Bold(true).Foreground(blue).Render("claude-code"))
 	lines = append(lines, fmt.Sprintf("  $ aim run cc -a %s", name))
 	if acc.Key != "" {
-		key, _ := config.ResolveKey(acc.Key)
-		lines = append(lines, fmt.Sprintf("  ANTHROPIC_AUTH_TOKEN=%s...", truncate(key, 16)))
+		if key, ok := m.config.Keys[acc.Key]; ok {
+			resolvedKey, _ := config.ResolveKey(key.Value)
+			lines = append(lines, fmt.Sprintf("  ANTHROPIC_AUTH_TOKEN=%s...", truncate(resolvedKey, 16)))
+		}
 	}
 	lines = append(lines, "")
 

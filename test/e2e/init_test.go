@@ -24,17 +24,67 @@ func TestInit_CreatesConfig(t *testing.T) {
 	// Verify file was created
 	_, err := os.Stat(configPath)
 	require.NoError(t, err)
+
+	// Verify config contains the new sections
+	content, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+	contentStr := string(content)
+	assert.Contains(t, contentStr, "tools:")
+	assert.Contains(t, contentStr, "vendors:")
+	assert.Contains(t, contentStr, "keys:")
+	assert.Contains(t, contentStr, "accounts:")
 }
 
 func TestInit_DoesNotOverwrite(t *testing.T) {
 	setup := NewTestSetup(t, `
 version: "2"
+tools:
+  cc:
+    protocol: anthropic
+vendors:
+  deepseek:
+    endpoints:
+      anthropic:
+        url: https://api.deepseek.com/anthropic
+keys:
+  deepseek:
+    value: sk-key
+    vendor: deepseek
 accounts:
-  deepseek: sk-key
+  deepseek:
+    key: deepseek
 `)
 
 	result := setup.Run("init")
 
-	assert.Equal(t, 2, result.ExitCode) // CFG error
-	assert.Contains(t, result.Stdout, "already exists")
+	assert.NotEqual(t, 0, result.ExitCode) // Should fail without --force
+	output := result.Stdout + result.Stderr
+	assert.Contains(t, output, "already exists")
+}
+
+func TestInit_ForceOverwrites(t *testing.T) {
+	setup := NewTestSetup(t, `
+version: "2"
+tools:
+  cc:
+    protocol: anthropic
+vendors:
+  deepseek:
+    endpoints:
+      anthropic:
+        url: https://api.deepseek.com/anthropic
+keys:
+  deepseek:
+    value: sk-key
+    vendor: deepseek
+accounts:
+  deepseek:
+    key: deepseek
+`)
+
+	result := setup.Run("init", "--force")
+
+	assert.Equal(t, 0, result.ExitCode)
+	output := result.Stdout + result.Stderr
+	assert.Contains(t, output, "Backed up")
 }

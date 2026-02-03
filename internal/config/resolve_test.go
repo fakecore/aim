@@ -14,17 +14,26 @@ func TestResolveAccount(t *testing.T) {
 		Version: "2",
 		Vendors: map[string]vendors.VendorConfig{
 			"deepseek": {
-				Protocols: map[string]string{
-					"openai":    "https://api.deepseek.com/v1",
-					"anthropic": "https://api.deepseek.com/anthropic",
-				},
-				DefaultModels: map[string]string{
-					"anthropic": "deepseek-chat",
+				Endpoints: map[string]vendors.EndpointConfig{
+					"openai": {
+						URL:          "https://api.deepseek.com/v1",
+						DefaultModel: "deepseek-chat",
+					},
+					"anthropic": {
+						URL:          "https://api.deepseek.com/anthropic",
+						DefaultModel: "deepseek-chat",
+					},
 				},
 			},
 		},
+		Keys: map[string]Key{
+			"deepseek-key": {
+				Value:  "sk-test",
+				Vendor: "deepseek",
+			},
+		},
 		Accounts: map[string]Account{
-			"deepseek": {Key: "sk-test", Vendor: "deepseek"},
+			"deepseek": {Key: "deepseek-key"},
 		},
 	}
 
@@ -32,8 +41,8 @@ func TestResolveAccount(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "deepseek", resolved.Name)
 	assert.Equal(t, "sk-test", resolved.Key)
-	assert.Equal(t, "anthropic", resolved.Protocol)
-	assert.Equal(t, "https://api.deepseek.com/anthropic", resolved.ProtocolURL)
+	assert.Equal(t, "anthropic", resolved.Endpoint)
+	assert.Equal(t, "https://api.deepseek.com/anthropic", resolved.EndpointURL)
 	assert.Equal(t, "deepseek-chat", resolved.Model)
 }
 
@@ -48,12 +57,30 @@ func TestResolveAccount_NotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "not found")
 }
 
-func TestResolveAccount_VendorNotDefined(t *testing.T) {
-	// Vendor not defined in config
+func TestResolveAccount_KeyNotDefined(t *testing.T) {
 	cfg := &Config{
 		Version: "2",
 		Accounts: map[string]Account{
-			"test": {Key: "sk-test", Vendor: "undefined-vendor"},
+			"test": {Key: "undefined-key"},
+		},
+	}
+
+	_, err := cfg.ResolveAccount("test", "claude-code", "anthropic")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
+}
+
+func TestResolveAccount_VendorNotDefined(t *testing.T) {
+	cfg := &Config{
+		Version: "2",
+		Keys: map[string]Key{
+			"test-key": {
+				Value:  "sk-test",
+				Vendor: "undefined-vendor",
+			},
+		},
+		Accounts: map[string]Account{
+			"test": {Key: "test-key"},
 		},
 	}
 
@@ -70,19 +97,97 @@ func TestResolveAccount_WithEnv(t *testing.T) {
 		Version: "2",
 		Vendors: map[string]vendors.VendorConfig{
 			"deepseek": {
-				Protocols: map[string]string{
-					"anthropic": "https://api.deepseek.com/anthropic",
+				Endpoints: map[string]vendors.EndpointConfig{
+					"anthropic": {
+						URL: "https://api.deepseek.com/anthropic",
+					},
 				},
 			},
 		},
+		Keys: map[string]Key{
+			"test-key": {
+				Value:  "${TEST_KEY}",
+				Vendor: "deepseek",
+			},
+		},
 		Accounts: map[string]Account{
-			"test": {Key: "${TEST_KEY}", Vendor: "deepseek"},
+			"test": {Key: "test-key"},
 		},
 	}
 
 	resolved, err := cfg.ResolveAccount("test", "claude-code", "anthropic")
 	require.NoError(t, err)
 	assert.Equal(t, "sk-from-env", resolved.Key)
+}
+
+func TestResolveAccount_AccountEndpointOverride(t *testing.T) {
+	cfg := &Config{
+		Version: "2",
+		Vendors: map[string]vendors.VendorConfig{
+			"deepseek": {
+				Endpoints: map[string]vendors.EndpointConfig{
+					"openai": {
+						URL:          "https://api.deepseek.com/v1",
+						DefaultModel: "deepseek-chat",
+					},
+					"anthropic": {
+						URL:          "https://api.deepseek.com/anthropic",
+						DefaultModel: "deepseek-chat",
+					},
+				},
+			},
+		},
+		Keys: map[string]Key{
+			"deepseek-key": {
+				Value:  "sk-test",
+				Vendor: "deepseek",
+			},
+		},
+		Accounts: map[string]Account{
+			"deepseek": {
+				Key:      "deepseek-key",
+				Endpoint: "openai", // Override to openai even though tool wants anthropic
+			},
+		},
+	}
+
+	resolved, err := cfg.ResolveAccount("deepseek", "claude-code", "anthropic")
+	require.NoError(t, err)
+	assert.Equal(t, "openai", resolved.Endpoint)
+	assert.Equal(t, "https://api.deepseek.com/v1", resolved.EndpointURL)
+}
+
+func TestResolveAccount_KeyEndpointRestriction(t *testing.T) {
+	cfg := &Config{
+		Version: "2",
+		Vendors: map[string]vendors.VendorConfig{
+			"deepseek": {
+				Endpoints: map[string]vendors.EndpointConfig{
+					"openai": {
+						URL: "https://api.deepseek.com/v1",
+					},
+					"anthropic": {
+						URL: "https://api.deepseek.com/anthropic",
+					},
+				},
+			},
+		},
+		Keys: map[string]Key{
+			"deepseek-key": {
+				Value:     "sk-test",
+				Vendor:    "deepseek",
+				Endpoints: []string{"openai"}, // Only allow openai
+			},
+		},
+		Accounts: map[string]Account{
+			"deepseek": {Key: "deepseek-key"},
+		},
+	}
+
+	// Should fail because key doesn't allow anthropic endpoint
+	_, err := cfg.ResolveAccount("deepseek", "claude-code", "anthropic")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not allowed to use endpoint")
 }
 
 func TestGetDefaultAccount(t *testing.T) {

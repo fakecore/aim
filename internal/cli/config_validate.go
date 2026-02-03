@@ -49,19 +49,85 @@ func configValidate(cmd *cobra.Command, args []string) error {
 
 	// Validate each vendor has required fields
 	for name, v := range cfg.Vendors {
-		if len(v.Protocols) == 0 {
+		if len(v.Endpoints) == 0 {
 			issues = append(issues, ValidationIssue{
 				Level:   "error",
 				Field:   fmt.Sprintf("vendors.%s", name),
-				Message: "Vendor has no protocols defined",
+				Message: "Vendor has no endpoints defined",
 			})
 		}
-		for proto, url := range v.Protocols {
-			if url == "" {
+		for epName, ep := range v.Endpoints {
+			if ep.URL == "" {
 				issues = append(issues, ValidationIssue{
 					Level:   "error",
-					Field:   fmt.Sprintf("vendors.%s.protocols.%s", name, proto),
-					Message: "Protocol URL cannot be empty",
+					Field:   fmt.Sprintf("vendors.%s.endpoints.%s", name, epName),
+					Message: "Endpoint URL cannot be empty",
+				})
+			}
+		}
+	}
+
+	// Validate keys section exists
+	if len(cfg.Keys) == 0 {
+		issues = append(issues, ValidationIssue{
+			Level:   "error",
+			Field:   "keys",
+			Message: "No keys defined",
+		})
+	}
+
+	// Validate each key
+	for name, key := range cfg.Keys {
+		prefix := fmt.Sprintf("keys.%s", name)
+
+		// Check vendor is specified
+		if key.Vendor == "" {
+			issues = append(issues, ValidationIssue{
+				Level:   "error",
+				Field:   fmt.Sprintf("%s.vendor", prefix),
+				Message: "Vendor must be explicitly specified (e.g., vendor: deepseek)",
+			})
+		} else {
+			// Check vendor exists in config
+			_, err := vendors.Resolve(key.Vendor, cfg.Vendors)
+			if err != nil {
+				issues = append(issues, ValidationIssue{
+					Level:   "error",
+					Field:   fmt.Sprintf("%s.vendor", prefix),
+					Message: fmt.Sprintf("Vendor '%s' not defined in configuration", key.Vendor),
+				})
+			}
+		}
+
+		// Check key value can be resolved
+		if key.Value == "" {
+			issues = append(issues, ValidationIssue{
+				Level:   "error",
+				Field:   fmt.Sprintf("%s.value", prefix),
+				Message: "Key value is required",
+			})
+		} else {
+			_, err := config.ResolveKey(key.Value)
+			if err != nil {
+				issues = append(issues, ValidationIssue{
+					Level:   "error",
+					Field:   fmt.Sprintf("%s.value", prefix),
+					Message: err.Error(),
+				})
+			}
+		}
+
+		// Validate endpoints restriction (if specified)
+		for _, epName := range key.Endpoints {
+			vendor, ok := cfg.Vendors[key.Vendor]
+			if !ok {
+				continue // Vendor error already reported above
+			}
+			if _, ok := vendor.Endpoints[epName]; !ok {
+				issues = append(issues, ValidationIssue{
+					Level:   "warning",
+					Field:   fmt.Sprintf("%s.endpoints", prefix),
+					Message: fmt.Sprintf("Endpoint '%s' not found in vendor '%s'", epName, key.Vendor),
 				})
 			}
 		}
@@ -80,40 +146,39 @@ func configValidate(cmd *cobra.Command, args []string) error {
 	for name, acc := range cfg.Accounts {
 		prefix := fmt.Sprintf("accounts.%s", name)
 
-		// Check vendor is specified
-		if acc.Vendor == "" {
-			issues = append(issues, ValidationIssue{
-				Level:   "error",
-				Field:   fmt.Sprintf("%s.vendor", prefix),
-				Message: "Vendor must be explicitly specified (e.g., vendor: deepseek)",
-			})
-		} else {
-			// Check vendor exists in config
-			_, err := vendors.Resolve(acc.Vendor, cfg.Vendors)
-			if err != nil {
-				issues = append(issues, ValidationIssue{
-					Level:   "error",
-					Field:   fmt.Sprintf("%s.vendor", prefix),
-					Message: fmt.Sprintf("Vendor '%s' not defined in configuration", acc.Vendor),
-				})
-			}
-		}
-
-		// Check key can be resolved
+		// Check key is specified
 		if acc.Key == "" {
 			issues = append(issues, ValidationIssue{
 				Level:   "error",
 				Field:   fmt.Sprintf("%s.key", prefix),
-				Message: "API key is required",
+				Message: "Account must reference a key (e.g., key: my-key)",
 			})
 		} else {
-			_, err := config.ResolveKey(acc.Key)
-			if err != nil {
+			// Check key exists in config
+			if _, ok := cfg.Keys[acc.Key]; !ok {
 				issues = append(issues, ValidationIssue{
 					Level:   "error",
 					Field:   fmt.Sprintf("%s.key", prefix),
-					Message: err.Error(),
+					Message: fmt.Sprintf("Key '%s' not defined in keys section", acc.Key),
 				})
+			}
+		}
+
+		// Validate endpoint override (if specified)
+		if acc.Endpoint != "" && acc.Key != "" {
+			if key, ok := cfg.Keys[acc.Key]; ok {
+				vendor, ok := cfg.Vendors[key.Vendor]
+				if !ok {
+					// Vendor error already reported
+					continue
+				}
+				if _, ok := vendor.Endpoints[acc.Endpoint]; !ok {
+					issues = append(issues, ValidationIssue{
+						Level:   "error",
+						Field:   fmt.Sprintf("%s.endpoint", prefix),
+						Message: fmt.Sprintf("Endpoint '%s' not found in vendor '%s'", acc.Endpoint, key.Vendor),
+					})
+				}
 			}
 		}
 	}
@@ -132,7 +197,7 @@ func configValidate(cmd *cobra.Command, args []string) error {
 	// Validate tools can work with configured vendors
 	for toolName, tool := range tools.BuiltinTools {
 		for vendorName, vendor := range cfg.Vendors {
-			if _, ok := vendor.Protocols[tool.Protocol]; !ok {
+			if _, ok := vendor.Endpoints[tool.Protocol]; !ok {
 				// This is just informational, not an error
 				// Some vendors may not support all tools
 				_ = toolName
@@ -145,6 +210,7 @@ func configValidate(cmd *cobra.Command, args []string) error {
 	if len(issues) == 0 {
 		fmt.Println("✓ Configuration is valid")
 		fmt.Printf("  Vendors: %d\n", len(cfg.Vendors))
+		fmt.Printf("  Keys: %d\n", len(cfg.Keys))
 		fmt.Printf("  Accounts: %d\n", len(cfg.Accounts))
 		return nil
 	}

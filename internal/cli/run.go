@@ -41,8 +41,11 @@ func init() {
 func run(cmd *cobra.Command, args []string) error {
 	toolName := args[0]
 
-	// Resolve tool
-	tool, err := tools.Resolve(toolName)
+	// Load config first (needed for tool protocol resolution)
+	cfg, cfgErr := config.Load(config.ConfigPath())
+
+	// Resolve tool with config (to get protocol from config)
+	tool, err := tools.ResolveWithConfig(toolName, cfg)
 	if err != nil {
 		return errors.Wrap(errors.ErrToolNotFound, toolName)
 	}
@@ -59,10 +62,9 @@ func run(cmd *cobra.Command, args []string) error {
 		return execute(tool, nil, toolArgs, true)
 	}
 
-	// Try to load config and resolve account
+	// Try to resolve account
 	var resolved *config.ResolvedAccount
-	cfg, err := config.Load(config.ConfigPath())
-	if err == nil {
+	if cfgErr == nil {
 		// Determine account
 		accName := accountName
 		if accName == "" {
@@ -77,7 +79,7 @@ func run(cmd *cobra.Command, args []string) error {
 		}
 	} else if accountName != "" {
 		// User explicitly specified an account but config failed to load
-		return err
+		return cfgErr
 	}
 
 	// Dry run mode
@@ -110,14 +112,14 @@ func execute(tool *tools.Tool, acc *config.ResolvedAccount, args []string, nativ
 
 		// Inject base URL (if tool supports it)
 		if baseURLVar, ok := tool.EnvVars["base_url"]; ok {
-			env = append(env, fmt.Sprintf("%s=%s", baseURLVar, acc.ProtocolURL))
+			env = append(env, fmt.Sprintf("%s=%s", baseURLVar, acc.EndpointURL))
 		}
 
 		// Inject model
 		// Priority: 1. User specified (-m flag), 2. Vendor default model (for openai), 3. Skip
 		// For anthropic protocol, most vendors auto-map model names, so we don't inject default
 		modelToUse := model
-		if modelToUse == "" && acc.Protocol == "openai" && acc.Model != "" {
+		if modelToUse == "" && acc.Endpoint == "openai" && acc.Model != "" {
 			modelToUse = acc.Model
 		}
 		if modelToUse != "" {
@@ -142,7 +144,7 @@ func execute(tool *tools.Tool, acc *config.ResolvedAccount, args []string, nativ
 
 func findExecutable(name string) (string, error) {
 	// If it's an absolute path, use it directly
-	if name[0] == '/' {
+	if len(name) > 0 && name[0] == '/' {
 		return name, nil
 	}
 
@@ -192,13 +194,13 @@ func printDryRun(tool *tools.Tool, acc *config.ResolvedAccount, args []string) {
 	fmt.Printf("Tool: %s (command: %s)\n", tool.Name, tool.Command)
 	fmt.Printf("Account: %s\n", acc.Name)
 	fmt.Printf("Key: %s...\n", acc.Key[:min(len(acc.Key), 8)])
-	fmt.Printf("Protocol: %s\n", acc.Protocol)
-	fmt.Printf("URL: %s\n", acc.ProtocolURL)
+	fmt.Printf("Endpoint: %s\n", acc.Endpoint)
+	fmt.Printf("URL: %s\n", acc.EndpointURL)
 	// Show model info
 	// For anthropic protocol, model is auto-mapped by vendor endpoint (not injected)
 	// For openai protocol, model is injected if specified by user or vendor has default
 	modelToShow := model
-	if modelToShow == "" && acc.Protocol == "openai" && acc.Model != "" {
+	if modelToShow == "" && acc.Endpoint == "openai" && acc.Model != "" {
 		modelToShow = acc.Model
 	}
 	if modelToShow != "" {
@@ -212,7 +214,7 @@ func printDryRun(tool *tools.Tool, acc *config.ResolvedAccount, args []string) {
 			fmt.Printf("Model: %s (ignored - %s doesn't support model env var)\n", modelToShow, tool.Name)
 		}
 	}
-	if modelToShow == "" && acc.Protocol == "anthropic" {
+	if modelToShow == "" && acc.Endpoint == "anthropic" {
 		fmt.Printf("Model: auto-mapped by %s endpoint\n", acc.Vendor)
 	}
 	fmt.Println()
@@ -222,7 +224,7 @@ func printDryRun(tool *tools.Tool, acc *config.ResolvedAccount, args []string) {
 		fmt.Printf("  %s=%s...\n", apiKeyVar, acc.Key[:min(len(acc.Key), 8)])
 	}
 	if baseURLVar, ok := tool.EnvVars["base_url"]; ok {
-		fmt.Printf("  %s=%s\n", baseURLVar, acc.ProtocolURL)
+		fmt.Printf("  %s=%s\n", baseURLVar, acc.EndpointURL)
 	}
 	if modelToShow != "" {
 		if modelVar, ok := tool.EnvVars["model"]; ok {
@@ -233,3 +235,9 @@ func printDryRun(tool *tools.Tool, acc *config.ResolvedAccount, args []string) {
 	fmt.Printf("Command: %s %v\n", tool.Command, args)
 }
 
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}

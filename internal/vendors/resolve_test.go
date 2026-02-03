@@ -11,48 +11,51 @@ func TestResolve_FromConfig(t *testing.T) {
 	// All vendors must be defined in config file
 	vendors := map[string]VendorConfig{
 		"deepseek": {
-			Protocols: map[string]string{
-				"openai":    "https://api.deepseek.com/v1",
-				"anthropic": "https://api.deepseek.com/anthropic",
-			},
-			DefaultModels: map[string]string{
-				"openai":    "deepseek-chat",
-				"anthropic": "deepseek-chat",
+			Endpoints: map[string]EndpointConfig{
+				"openai": {
+					URL:          "https://api.deepseek.com/v1",
+					DefaultModel: "deepseek-chat",
+				},
+				"anthropic": {
+					URL:          "https://api.deepseek.com/anthropic",
+					DefaultModel: "deepseek-chat",
+				},
 			},
 		},
 	}
 
 	v, err := Resolve("deepseek", vendors)
 	require.NoError(t, err)
-	assert.Equal(t, "https://api.deepseek.com/v1", v.Protocols["openai"])
-	assert.Equal(t, "https://api.deepseek.com/anthropic", v.Protocols["anthropic"])
-	assert.Equal(t, "deepseek-chat", v.DefaultModels["openai"])
+	assert.Equal(t, "https://api.deepseek.com/v1", v.Endpoints["openai"].URL)
+	assert.Equal(t, "deepseek-chat", v.Endpoints["openai"].DefaultModel)
 }
 
 func TestResolve_CustomVendor(t *testing.T) {
 	customVendors := map[string]VendorConfig{
 		"custom": {
-			Protocols: map[string]string{
-				"openai": "https://custom.com/v1",
-			},
-			DefaultModels: map[string]string{
-				"openai": "custom-model",
+			Endpoints: map[string]EndpointConfig{
+				"openai": {
+					URL:          "https://custom.com/v1",
+					DefaultModel: "custom-model",
+				},
 			},
 		},
 	}
 
 	v, err := Resolve("custom", customVendors)
 	require.NoError(t, err)
-	assert.Equal(t, "https://custom.com/v1", v.Protocols["openai"])
-	assert.Equal(t, "custom-model", v.DefaultModels["openai"])
+	assert.Equal(t, "https://custom.com/v1", v.Endpoints["openai"].URL)
+	assert.Equal(t, "custom-model", v.Endpoints["openai"].DefaultModel)
 }
 
 func TestResolve_NotFound(t *testing.T) {
 	// Vendor not defined in config - should error
 	vendors := map[string]VendorConfig{
 		"other": {
-			Protocols: map[string]string{
-				"openai": "https://other.com/v1",
+			Endpoints: map[string]EndpointConfig{
+				"openai": {
+					URL: "https://other.com/v1",
+				},
 			},
 		},
 	}
@@ -69,41 +72,49 @@ func TestResolve_EmptyVendors(t *testing.T) {
 	assert.Contains(t, err.Error(), "not defined")
 }
 
-func TestGetProtocolURL(t *testing.T) {
+func TestGetEndpoint(t *testing.T) {
 	v := &Vendor{
-		Protocols: map[string]string{
-			"openai": "https://api.example.com",
+		Endpoints: map[string]Endpoint{
+			"openai": {
+				URL:          "https://api.example.com",
+				DefaultModel: "gpt-4",
+			},
 		},
 	}
 
-	url, err := v.GetProtocolURL("openai")
+	ep, err := v.GetEndpoint("openai")
 	require.NoError(t, err)
-	assert.Equal(t, "https://api.example.com", url)
+	assert.Equal(t, "https://api.example.com", ep.URL)
+	assert.Equal(t, "gpt-4", ep.DefaultModel)
 
-	_, err = v.GetProtocolURL("anthropic")
+	_, err = v.GetEndpoint("anthropic")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not supported")
 }
 
-func TestGetDefaultModel(t *testing.T) {
+func TestHasEndpoint(t *testing.T) {
 	v := &Vendor{
-		DefaultModels: map[string]string{
-			"openai":    "gpt-4",
-			"anthropic": "claude-3",
+		Endpoints: map[string]Endpoint{
+			"openai":    {URL: "https://api.example.com/openai"},
+			"anthropic": {URL: "https://api.example.com/anthropic"},
 		},
 	}
 
-	assert.Equal(t, "gpt-4", v.GetDefaultModel("openai"))
-	assert.Equal(t, "claude-3", v.GetDefaultModel("anthropic"))
-	assert.Equal(t, "", v.GetDefaultModel("unknown"))
+	assert.True(t, v.HasEndpoint("openai"))
+	assert.True(t, v.HasEndpoint("anthropic"))
+	assert.False(t, v.HasEndpoint("unknown"))
 }
 
-func TestGetDefaultModel_Nil(t *testing.T) {
+func TestListEndpoints(t *testing.T) {
 	v := &Vendor{
-		Protocols: map[string]string{
-			"openai": "https://api.example.com",
+		Endpoints: map[string]Endpoint{
+			"openai":    {URL: "https://api.example.com/openai"},
+			"anthropic": {URL: "https://api.example.com/anthropic"},
 		},
 	}
 
-	assert.Equal(t, "", v.GetDefaultModel("openai"))
+	endpoints := v.ListEndpoints()
+	assert.Len(t, endpoints, 2)
+	assert.Contains(t, endpoints, "openai")
+	assert.Contains(t, endpoints, "anthropic")
 }

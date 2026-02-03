@@ -9,28 +9,44 @@ import (
 
 // Config represents the full AIM configuration
 type Config struct {
-	Version  string                      `yaml:"version"`
+	Version  string                       `yaml:"version"`
+	Tools    map[string]ToolConfig        `yaml:"tools,omitempty"`
 	Vendors  map[string]vendors.VendorConfig `yaml:"vendors,omitempty"`
-	Accounts map[string]Account          `yaml:"accounts"`
-	Settings Settings                    `yaml:"settings,omitempty"`
+	Keys     map[string]Key               `yaml:"keys,omitempty"`
+	Accounts map[string]Account           `yaml:"accounts,omitempty"`
+	Settings Settings                     `yaml:"settings,omitempty"`
+}
+
+// ToolConfig represents a tool's protocol configuration
+type ToolConfig struct {
+	Protocol string `yaml:"protocol"`
+}
+
+// Key represents a key configuration
+type Key struct {
+	Value     string   `yaml:"value"`
+	Vendor    string   `yaml:"vendor"`
+	Endpoints []string `yaml:"endpoints,omitempty"` // Optional: restrict which endpoints this key can use
 }
 
 // Account represents an account configuration
+// Account references a Key and can override endpoint/model
 type Account struct {
-	Key    string `yaml:"key,omitempty"`
-	Vendor string `yaml:"vendor,omitempty"`
+	Key      string `yaml:"key"`                  // Reference to a key name
+	Endpoint string `yaml:"endpoint,omitempty"`   // Optional: override endpoint selection
+	Model    string `yaml:"model,omitempty"`      // Optional: override model
 }
 
 // UnmarshalYAML implements custom YAML unmarshaling for Account
-// to support both shorthand (string key) and full object formats
+// to support both shorthand (string key reference) and full object formats
 func (a *Account) UnmarshalYAML(node *yaml.Node) error {
-	// Try string format first (shorthand: "account: key-value")
+	// Try string format first (shorthand: "account: key-name")
 	if node.Kind == yaml.ScalarNode {
 		a.Key = node.Value
 		return nil
 	}
 
-	// Try object format (full: "account: {key: ..., vendor: ...}")
+	// Try object format (full: "account: {key: ..., endpoint: ...}")
 	if node.Kind == yaml.MappingNode {
 		type rawAccount Account
 		var raw rawAccount
@@ -52,12 +68,12 @@ type Settings struct {
 	LogLevel       string `yaml:"log_level,omitempty"`
 }
 
-// ResolvedAccount represents a fully resolved account
+// ResolvedAccount represents a fully resolved account with all dependencies
 type ResolvedAccount struct {
 	Name        string
 	Key         string
 	Vendor      string
-	Protocol    string
-	ProtocolURL string
-	Model       string // Default model for this vendor/protocol
+	Endpoint    string
+	EndpointURL string
+	Model       string
 }

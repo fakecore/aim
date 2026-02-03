@@ -12,8 +12,14 @@ import (
 func TestWindowSizeMsgHandling(t *testing.T) {
 	cfg := &config.Config{
 		Version: "2",
+		Keys: map[string]config.Key{
+			"deepseek-key": {
+				Value:  "sk-test",
+				Vendor: "deepseek",
+			},
+		},
 		Accounts: map[string]config.Account{
-			"deepseek": {Key: "sk-test", Vendor: "deepseek"},
+			"deepseek": {Key: "deepseek-key"},
 		},
 	}
 
@@ -59,8 +65,14 @@ func TestWindowSizeMsgHandling(t *testing.T) {
 func TestWindowSizeMsgSplitLayout(t *testing.T) {
 	cfg := &config.Config{
 		Version: "2",
+		Keys: map[string]config.Key{
+			"deepseek-key": {
+				Value:  "sk-test",
+				Vendor: "deepseek",
+			},
+		},
 		Accounts: map[string]config.Account{
-			"deepseek": {Key: "sk-test", Vendor: "deepseek"},
+			"deepseek": {Key: "deepseek-key"},
 		},
 	}
 
@@ -95,8 +107,14 @@ func TestWindowSizeMsgSplitLayout(t *testing.T) {
 func TestWindowSizeMsgUnsupportedLayout(t *testing.T) {
 	cfg := &config.Config{
 		Version: "2",
+		Keys: map[string]config.Key{
+			"deepseek-key": {
+				Value:  "sk-test",
+				Vendor: "deepseek",
+			},
+		},
 		Accounts: map[string]config.Account{
-			"deepseek": {Key: "sk-test", Vendor: "deepseek"},
+			"deepseek": {Key: "deepseek-key"},
 		},
 	}
 
@@ -128,8 +146,14 @@ func TestWindowSizeMsgUnsupportedLayout(t *testing.T) {
 func TestTabNavigation(t *testing.T) {
 	cfg := &config.Config{
 		Version: "2",
+		Keys: map[string]config.Key{
+			"deepseek-key": {
+				Value:  "sk-test",
+				Vendor: "deepseek",
+			},
+		},
 		Accounts: map[string]config.Account{
-			"deepseek": {Key: "sk-test", Vendor: "deepseek"},
+			"deepseek": {Key: "deepseek-key"},
 		},
 	}
 
@@ -213,10 +237,15 @@ func TestTabNavigationBoundary(t *testing.T) {
 func TestAccountNavigation(t *testing.T) {
 	cfg := &config.Config{
 		Version: "2",
+		Keys: map[string]config.Key{
+			"key1": {Value: "val1", Vendor: "vendor1"},
+			"key2": {Value: "val2", Vendor: "vendor2"},
+			"key3": {Value: "val3", Vendor: "vendor3"},
+		},
 		Accounts: map[string]config.Account{
-			"account1": {Key: "key1", Vendor: "vendor1"},
-			"account2": {Key: "key2", Vendor: "vendor2"},
-			"account3": {Key: "key3", Vendor: "vendor3"},
+			"account1": {Key: "key1"},
+			"account2": {Key: "key2"},
+			"account3": {Key: "key3"},
 		},
 	}
 
@@ -263,9 +292,13 @@ func TestAccountNavigation(t *testing.T) {
 func TestAccountNavigationBoundary(t *testing.T) {
 	cfg := &config.Config{
 		Version: "2",
+		Keys: map[string]config.Key{
+			"key1": {Value: "val1", Vendor: "vendor1"},
+			"key2": {Value: "val2", Vendor: "vendor2"},
+		},
 		Accounts: map[string]config.Account{
-			"account1": {Key: "key1", Vendor: "vendor1"},
-			"account2": {Key: "key2", Vendor: "vendor2"},
+			"account1": {Key: "key1"},
+			"account2": {Key: "key2"},
 		},
 	}
 
@@ -467,9 +500,13 @@ func TestBackspaceInEditMode(t *testing.T) {
 func TestDeleteAccount(t *testing.T) {
 	cfg := &config.Config{
 		Version: "2",
+		Keys: map[string]config.Key{
+			"key1": {Value: "val1", Vendor: "vendor1"},
+			"key2": {Value: "val2", Vendor: "vendor2"},
+		},
 		Accounts: map[string]config.Account{
-			"account1": {Key: "key1", Vendor: "vendor1"},
-			"account2": {Key: "key2", Vendor: "vendor2"},
+			"account1": {Key: "key1"},
+			"account2": {Key: "key2"},
 		},
 	}
 
@@ -501,8 +538,11 @@ func TestDeleteAccount(t *testing.T) {
 func TestDeleteLastAccount(t *testing.T) {
 	cfg := &config.Config{
 		Version: "2",
+		Keys: map[string]config.Key{
+			"test-key": {Value: "val", Vendor: "vendor"},
+		},
 		Accounts: map[string]config.Account{
-			"only": {Key: "key", Vendor: "vendor"},
+			"only": {Key: "test-key"},
 		},
 	}
 
@@ -530,8 +570,11 @@ func TestDeleteLastAccount(t *testing.T) {
 func TestSingleLayoutPreviewToggle(t *testing.T) {
 	cfg := &config.Config{
 		Version: "2",
+		Keys: map[string]config.Key{
+			"key1": {Value: "val1", Vendor: "vendor1"},
+		},
 		Accounts: map[string]config.Account{
-			"account1": {Key: "key1", Vendor: "vendor1"},
+			"account1": {Key: "key1"},
 		},
 	}
 
@@ -567,8 +610,11 @@ func TestSingleLayoutPreviewToggle(t *testing.T) {
 func TestTabDoesNotToggleInSplitLayout(t *testing.T) {
 	cfg := &config.Config{
 		Version: "2",
+		Keys: map[string]config.Key{
+			"key1": {Value: "val1", Vendor: "vendor1"},
+		},
 		Accounts: map[string]config.Account{
-			"account1": {Key: "key1", Vendor: "vendor1"},
+			"account1": {Key: "key1"},
 		},
 	}
 
@@ -591,8 +637,11 @@ func TestTabDoesNotToggleInSplitLayout(t *testing.T) {
 func TestTabDoesNotToggleInOtherTabs(t *testing.T) {
 	cfg := &config.Config{
 		Version: "2",
+		Keys: map[string]config.Key{
+			"key1": {Value: "val1", Vendor: "vendor1"},
+		},
 		Accounts: map[string]config.Account{
-			"account1": {Key: "key1", Vendor: "vendor1"},
+			"account1": {Key: "key1"},
 		},
 	}
 

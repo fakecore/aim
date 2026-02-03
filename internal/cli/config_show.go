@@ -22,7 +22,7 @@ var configCmd = &cobra.Command{
 var configShowCmd = &cobra.Command{
 	Use:   "show",
 	Short: "Show configuration for an account",
-	Long:  `Display resolved configuration including account, vendor, and protocol information.`,
+	Long:  `Display resolved configuration including account, key, and vendor information.`,
 	RunE:  configShow,
 }
 
@@ -50,23 +50,40 @@ func configShow(cmd *cobra.Command, args []string) error {
 		return errors.Wrap(errors.ErrAccountNotFound, account)
 	}
 
-	key, err := config.ResolveKey(acc.Key)
+	// Get the key referenced by the account
+	keyRef, ok := cfg.Keys[acc.Key]
+	if !ok {
+		return fmt.Errorf("key '%s' referenced by account not found", acc.Key)
+	}
+
+	keyValue, err := config.ResolveKey(keyRef.Value)
 	if err != nil {
 		return err
 	}
 
-	vendor, err := vendors.Resolve(acc.Vendor, cfg.Vendors)
+	vendor, err := vendors.Resolve(keyRef.Vendor, cfg.Vendors)
 	if err != nil {
 		return err
 	}
 
 	fmt.Printf("Account: %s\n", account)
-	fmt.Printf("Vendor: %s\n", acc.Vendor)
-	fmt.Printf("Key: %s...\n", truncate(key, 8))
+	fmt.Printf("Key: %s\n", acc.Key)
+	fmt.Printf("Vendor: %s\n", keyRef.Vendor)
+	fmt.Printf("API Key: %s...\n", truncate(keyValue, 8))
+	if acc.Endpoint != "" {
+		fmt.Printf("Endpoint (override): %s\n", acc.Endpoint)
+	}
+	if acc.Model != "" {
+		fmt.Printf("Model (override): %s\n", acc.Model)
+	}
 	fmt.Println()
-	fmt.Println("Protocols:")
-	for proto, url := range vendor.Protocols {
-		fmt.Printf("  %s: %s\n", proto, url)
+	fmt.Println("Available Endpoints:")
+	for epName, ep := range vendor.Endpoints {
+		defaultModel := ""
+		if ep.DefaultModel != "" {
+			defaultModel = fmt.Sprintf(", default model: %s", ep.DefaultModel)
+		}
+		fmt.Printf("  %s: %s%s\n", epName, ep.URL, defaultModel)
 	}
 
 	return nil

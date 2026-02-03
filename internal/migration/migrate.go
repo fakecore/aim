@@ -20,55 +20,72 @@ func LoadV1(path string) (*V1Config, error) {
 }
 
 // Migrate converts v1 config to v2
+// Note: v1 used "providers" and "keys", v2 uses "vendors", "keys", and "accounts"
 func Migrate(v1 *V1Config) *config.Config {
 	v2 := &config.Config{
 		Version:  "2",
+		Keys:     make(map[string]config.Key),
 		Accounts: make(map[string]config.Account),
 		Vendors:  make(map[string]vendors.VendorConfig),
 	}
 
-	// Convert keys to accounts
+	// Convert v1 keys to v2 keys
+	// In v1: keys had value and provider
+	// In v2: keys have value, vendor, and optional endpoints restriction
 	for name, key := range v1.Keys {
-		v2.Accounts[name] = config.Account{
-			Key:    key.Value,
+		v2.Keys[name] = config.Key{
+			Value:  key.Value,
 			Vendor: key.Provider,
+			// No endpoints restriction by default
 		}
+
+		// Create an account with the same name that references the key
+		v2.Accounts[name] = config.Account{
+			Key: name,
+		}
+
 		if key.IsDefault {
 			v2.Settings.DefaultAccount = name
 		}
 	}
 
-	// Convert providers to vendors
-	// All vendors must be explicitly defined in v2
+	// Convert v1 providers to v2 vendors
+	// In v1: providers had base_url and api_path
+	// In v2: vendors have endpoints with url and default_model
 	for name, provider := range v1.Providers {
 		if builtin, isBuiltin := vendors.BuiltinVendors[name]; isBuiltin {
-			// Use builtin vendor definition as base, apply v1 overrides
-			fullURL := provider.BaseURL + provider.APIPath
-			builtinURL := builtin.Protocols["openai"]
+			// Use builtin vendor definition - copy all endpoints
+			endpoints := make(map[string]vendors.EndpointConfig)
+			for epName, ep := range builtin.Endpoints {
+				endpoints[epName] = vendors.EndpointConfig{
+					URL:          ep.URL,
+					DefaultModel: ep.DefaultModel,
+				}
+			}
+
+			// Apply v1 URL override if provided
+			if provider.BaseURL != "" || provider.APIPath != "" {
+				fullURL := provider.BaseURL + provider.APIPath
+				// Override the openai endpoint
+				if _, ok := endpoints["openai"]; ok {
+					endpoints["openai"] = vendors.EndpointConfig{
+						URL:          fullURL,
+						DefaultModel: builtin.Endpoints["openai"].DefaultModel,
+					}
+				}
+			}
 
 			v2.Vendors[name] = vendors.VendorConfig{
-				Protocols:     make(map[string]string),
-				DefaultModels: make(map[string]string),
-			}
-
-			// Copy all protocols from builtin
-			for proto, url := range builtin.Protocols {
-				v2.Vendors[name].Protocols[proto] = url
-			}
-			// Copy all default models from builtin
-			for proto, model := range builtin.DefaultModels {
-				v2.Vendors[name].DefaultModels[proto] = model
-			}
-
-			// Apply v1 URL override if different
-			if fullURL != builtinURL {
-				v2.Vendors[name].Protocols["openai"] = fullURL
+				Endpoints: endpoints,
 			}
 		} else {
 			// Custom provider - create explicit vendor definition
+			fullURL := provider.BaseURL + provider.APIPath
 			v2.Vendors[name] = vendors.VendorConfig{
-				Protocols: map[string]string{
-					"openai": provider.BaseURL + provider.APIPath,
+				Endpoints: map[string]vendors.EndpointConfig{
+					"openai": {
+						URL: fullURL,
+					},
 				},
 			}
 		}

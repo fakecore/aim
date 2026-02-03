@@ -19,9 +19,10 @@ func TestPhase2_FullWorkflow(t *testing.T) {
 	require.Equal(t, 0, result.ExitCode)
 	assert.Contains(t, result.Stdout, "initialized")
 
-	// Step 2: Validate empty config (should pass, no accounts to validate)
+	// Step 2: Validate empty config (should fail, no keys defined)
 	result = setup.Run("config", "validate")
-	require.Equal(t, 0, result.ExitCode)
+	require.NotEqual(t, 0, result.ExitCode)
+	assert.Contains(t, result.Stdout+result.Stderr, "No keys defined")
 
 	// Step 3: Show config (might fail if no default account, that's OK)
 	result = setup.Run("config", "show")
@@ -29,9 +30,28 @@ func TestPhase2_FullWorkflow(t *testing.T) {
 
 	// Step 4: Create a config with accounts via file write
 	configWithAccount := `version: "2"
+tools:
+  cc:
+    protocol: anthropic
+  codex:
+    protocol: openai
+vendors:
+  deepseek:
+    endpoints:
+      openai:
+        url: https://api.deepseek.com/v1
+        default_model: deepseek-chat
+      anthropic:
+        url: https://api.deepseek.com/anthropic
+        default_model: deepseek-chat
+keys:
+  deepseek:
+    value: sk-test-key
+    vendor: deepseek
 accounts:
-  deepseek: sk-test-key
-options:
+  deepseek:
+    key: deepseek
+settings:
   default_account: deepseek
 `
 	configPath := filepath.Join(setup.TmpDir, "config.yaml")

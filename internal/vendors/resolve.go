@@ -8,8 +8,13 @@ import (
 
 // VendorConfig represents a vendor configuration from YAML
 type VendorConfig struct {
-	Protocols     map[string]string `yaml:"protocols,omitempty"`
-	DefaultModels map[string]string `yaml:"default_models,omitempty"`
+	Endpoints map[string]EndpointConfig `yaml:"endpoints,omitempty"`
+}
+
+// EndpointConfig represents an endpoint configuration from YAML
+type EndpointConfig struct {
+	URL          string `yaml:"url"`
+	DefaultModel string `yaml:"default_model,omitempty"`
 }
 
 // Resolve resolves a vendor configuration from the config file
@@ -28,29 +33,48 @@ func Resolve(name string, vendors map[string]VendorConfig) (*Vendor, error) {
 		}
 	}
 
+	// Convert EndpointConfig to Endpoint
+	endpoints := make(map[string]Endpoint)
+	for name, ep := range v.Endpoints {
+		endpoints[name] = Endpoint{
+			URL:          ep.URL,
+			DefaultModel: ep.DefaultModel,
+		}
+	}
+
 	return &Vendor{
-		Protocols:     v.Protocols,
-		DefaultModels: v.DefaultModels,
+		Endpoints: endpoints,
 	}, nil
 }
 
-// GetProtocolURL gets the URL for a specific protocol
-func (v *Vendor) GetProtocolURL(protocol string) (string, error) {
-	url, ok := v.Protocols[protocol]
+// GetEndpoint gets the endpoint configuration for a specific protocol/endpoint name
+func (v *Vendor) GetEndpoint(endpointName string) (*Endpoint, error) {
+	ep, ok := v.Endpoints[endpointName]
 	if !ok {
-		return "", &errors.Error{
+		return nil, &errors.Error{
 			Code:     "AIM-VEN-002",
 			Category: "VEN",
-			Message:  fmt.Sprintf("Protocol '%s' not supported", protocol),
+			Message:  fmt.Sprintf("Endpoint '%s' not supported", endpointName),
+			Suggestions: []string{
+				"Check available endpoints in your vendor configuration",
+				"Common endpoints: openai, anthropic",
+			},
 		}
 	}
-	return url, nil
+	return &ep, nil
 }
 
-// GetDefaultModel gets the default model for a specific protocol
-func (v *Vendor) GetDefaultModel(protocol string) string {
-	if v.DefaultModels == nil {
-		return ""
+// HasEndpoint checks if a vendor supports a specific endpoint
+func (v *Vendor) HasEndpoint(endpointName string) bool {
+	_, ok := v.Endpoints[endpointName]
+	return ok
+}
+
+// ListEndpoints returns all available endpoint names for this vendor
+func (v *Vendor) ListEndpoints() []string {
+	names := make([]string, 0, len(v.Endpoints))
+	for name := range v.Endpoints {
+		names = append(names, name)
 	}
-	return v.DefaultModels[protocol]
+	return names
 }

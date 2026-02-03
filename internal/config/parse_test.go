@@ -9,32 +9,39 @@ import (
 )
 
 func TestParse_MinimalConfig(t *testing.T) {
-	// Vendor must be explicitly specified
+	// New config format: accounts reference keys
 	data := `
 version: "2"
+keys:
+  work-key:
+    value: sk-test-key
+    vendor: deepseek
 accounts:
   work:
-    key: sk-test-key
-    vendor: deepseek
+    key: work-key
 `
 	cfg, err := Parse([]byte(data))
 	require.NoError(t, err)
 	assert.Equal(t, "2", cfg.Version)
-	assert.Equal(t, "sk-test-key", cfg.Accounts["work"].Key)
-	assert.Equal(t, "deepseek", cfg.Accounts["work"].Vendor) // explicitly set
+	assert.Equal(t, "work-key", cfg.Accounts["work"].Key)
+	assert.Equal(t, "deepseek", cfg.Keys["work-key"].Vendor)
 }
 
-func TestParse_WithVendor(t *testing.T) {
+func TestParse_WithKeysAndAccounts(t *testing.T) {
 	data := `
 version: "2"
+keys:
+  glm-work:
+    value: sk-work-key
+    vendor: glm
 accounts:
   glm-work:
-    key: sk-work-key
-    vendor: glm
+    key: glm-work
 `
 	cfg, err := Parse([]byte(data))
 	require.NoError(t, err)
-	assert.Equal(t, "glm", cfg.Accounts["glm-work"].Vendor)
+	assert.Equal(t, "glm-work", cfg.Accounts["glm-work"].Key)
+	assert.Equal(t, "glm", cfg.Keys["glm-work"].Vendor)
 }
 
 func TestParse_InvalidVersion(t *testing.T) {
