@@ -20,6 +20,7 @@ var (
 	timeout     string
 	dryRun      bool
 	native      bool
+	model       string
 )
 
 var runCmd = &cobra.Command{
@@ -40,6 +41,7 @@ func init() {
 	runCmd.Flags().StringVar(&timeout, "timeout", "", "Command timeout (e.g., 5m, 1h)")
 	runCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be executed without running")
 	runCmd.Flags().BoolVar(&native, "native", false, "Run tool without env injection")
+	runCmd.Flags().StringVarP(&model, "model", "m", "", "Model to use (e.g., claude-3-opus-20240229, gpt-4o)")
 }
 
 func run(cmd *cobra.Command, args []string) error {
@@ -99,13 +101,21 @@ func execute(tool *tools.Tool, acc *config.ResolvedAccount, timeout time.Duratio
 	env := os.Environ()
 
 	if !native {
-		switch tool.Protocol {
-		case "anthropic":
-			env = append(env, fmt.Sprintf("ANTHROPIC_AUTH_TOKEN=%s", acc.Key))
-			env = append(env, fmt.Sprintf("ANTHROPIC_BASE_URL=%s", acc.ProtocolURL))
-		case "openai":
-			env = append(env, fmt.Sprintf("OPENAI_API_KEY=%s", acc.Key))
-			env = append(env, fmt.Sprintf("OPENAI_BASE_URL=%s", acc.ProtocolURL))
+		// Inject API key (all tools need this)
+		if apiKeyVar, ok := tool.EnvVars["api_key"]; ok {
+			env = append(env, fmt.Sprintf("%s=%s", apiKeyVar, acc.Key))
+		}
+
+		// Inject base URL (if tool supports it)
+		if baseURLVar, ok := tool.EnvVars["base_url"]; ok {
+			env = append(env, fmt.Sprintf("%s=%s", baseURLVar, acc.ProtocolURL))
+		}
+
+		// Inject model (if specified and tool supports it)
+		if model != "" {
+			if modelVar, ok := tool.EnvVars["model"]; ok {
+				env = append(env, fmt.Sprintf("%s=%s", modelVar, model))
+			}
 		}
 	}
 
@@ -161,16 +171,27 @@ func printDryRun(tool *tools.Tool, acc *config.ResolvedAccount, timeout time.Dur
 	fmt.Printf("Key: %s...\n", acc.Key[:min(len(acc.Key), 8)])
 	fmt.Printf("Protocol: %s\n", acc.Protocol)
 	fmt.Printf("URL: %s\n", acc.ProtocolURL)
+	if model != "" {
+		if modelVar, ok := tool.EnvVars["model"]; ok {
+			fmt.Printf("Model: %s (via %s)\n", model, modelVar)
+		} else {
+			fmt.Printf("Model: %s (ignored - %s doesn't support model env var)\n", model, tool.Name)
+		}
+	}
 	fmt.Printf("Timeout: %s\n", timeout)
 	fmt.Println()
 	fmt.Println("Environment:")
-	switch tool.Protocol {
-	case "anthropic":
-		fmt.Printf("  ANTHROPIC_AUTH_TOKEN=%s...\n", acc.Key[:min(len(acc.Key), 8)])
-		fmt.Printf("  ANTHROPIC_BASE_URL=%s\n", acc.ProtocolURL)
-	case "openai":
-		fmt.Printf("  OPENAI_API_KEY=%s...\n", acc.Key[:min(len(acc.Key), 8)])
-		fmt.Printf("  OPENAI_BASE_URL=%s\n", acc.ProtocolURL)
+	// Show all configured env vars
+	if apiKeyVar, ok := tool.EnvVars["api_key"]; ok {
+		fmt.Printf("  %s=%s...\n", apiKeyVar, acc.Key[:min(len(acc.Key), 8)])
+	}
+	if baseURLVar, ok := tool.EnvVars["base_url"]; ok {
+		fmt.Printf("  %s=%s\n", baseURLVar, acc.ProtocolURL)
+	}
+	if model != "" {
+		if modelVar, ok := tool.EnvVars["model"]; ok {
+			fmt.Printf("  %s=%s\n", modelVar, model)
+		}
 	}
 	fmt.Println()
 	fmt.Printf("Command: %s %v\n", tool.Command, args)
@@ -182,3 +203,4 @@ func min(a, b int) int {
 	}
 	return b
 }
+

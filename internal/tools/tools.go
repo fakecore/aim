@@ -5,6 +5,9 @@ type Tool struct {
 	Name     string
 	Command  string
 	Protocol string
+	// EnvVars maps standard env var names to tool-specific ones
+	// Keys: api_key, base_url, model
+	EnvVars map[string]string
 }
 
 // BuiltinTools contains the built-in tool definitions
@@ -13,16 +16,32 @@ var BuiltinTools = map[string]Tool{
 		Name:     "claude-code",
 		Command:  "claude",
 		Protocol: "anthropic",
+		EnvVars: map[string]string{
+			"api_key":  "ANTHROPIC_AUTH_TOKEN",
+			"base_url": "ANTHROPIC_BASE_URL",
+			"model":    "ANTHROPIC_MODEL",
+		},
 	},
 	"codex": {
 		Name:     "codex",
 		Command:  "codex",
 		Protocol: "openai",
+		EnvVars: map[string]string{
+			"api_key": "OPENAI_API_KEY",
+			// Codex doesn't support base_url or model via env vars
+			// base_url is configured in ~/.codex/config.toml
+			// model is set via --model flag or config file
+		},
 	},
 	"opencode": {
 		Name:     "opencode",
 		Command:  "opencode",
 		Protocol: "openai",
+		EnvVars: map[string]string{
+			"api_key":  "OPENAI_API_KEY",
+			"base_url": "OPENAI_BASE_URL",
+			"model":    "OPENAI_MODEL",
+		},
 	},
 }
 
@@ -45,6 +64,18 @@ func Resolve(name string) (*Tool, error) {
 	}
 
 	return nil, &ToolError{Message: "Unknown tool: " + name}
+}
+
+// SupportsModel returns true if the tool supports model selection via env var
+func (t *Tool) SupportsModel() bool {
+	_, ok := t.EnvVars["model"]
+	return ok
+}
+
+// SupportsBaseURL returns true if the tool supports base URL via env var
+func (t *Tool) SupportsBaseURL() bool {
+	_, ok := t.EnvVars["base_url"]
+	return ok
 }
 
 // ToolError represents a tool-related error
