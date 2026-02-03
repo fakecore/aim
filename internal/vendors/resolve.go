@@ -79,3 +79,11 @@ func (v *Vendor) GetProtocolURL(protocol string) (string, error) {
 	}
 	return url, nil
 }
+
+// GetDefaultModel gets the default model for a specific protocol
+func (v *Vendor) GetDefaultModel(protocol string) string {
+	if v.DefaultModels == nil {
+		return ""
+	}
+	return v.DefaultModels[protocol]
+}

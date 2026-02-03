@@ -37,12 +37,16 @@ func (c *Config) ResolveAccount(name string, tool string, toolProtocol string) (
 		return nil, errors.Wrap(errors.ErrProtocolNotSupported, acc.Vendor, toolProtocol)
 	}
 
+	// Get default model for this vendor/protocol
+	model := vendor.GetDefaultModel(toolProtocol)
+
 	return &ResolvedAccount{
 		Name:        name,
 		Key:         key,
 		Vendor:      acc.Vendor,
 		Protocol:    toolProtocol,
 		ProtocolURL: protocolURL,
+		Model:       model,
 	}, nil
 }
 

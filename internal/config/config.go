@@ -57,4 +57,5 @@ type ResolvedAccount struct {
 	Vendor      string
 	Protocol    string
 	ProtocolURL string
+	Model       string // Default model for this vendor/protocol
 }

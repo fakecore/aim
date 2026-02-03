@@ -111,10 +111,15 @@ func execute(tool *tools.Tool, acc *config.ResolvedAccount, timeout time.Duratio
 			env = append(env, fmt.Sprintf("%s=%s", baseURLVar, acc.ProtocolURL))
 		}
 
-		// Inject model (if specified and tool supports it)
-		if model != "" {
+		// Inject model
+		// Priority: 1. User specified (-m flag), 2. Vendor default model, 3. Skip if tool doesn't support
+		modelToUse := model
+		if modelToUse == "" && acc.Model != "" {
+			modelToUse = acc.Model
+		}
+		if modelToUse != "" {
 			if modelVar, ok := tool.EnvVars["model"]; ok {
-				env = append(env, fmt.Sprintf("%s=%s", modelVar, model))
+				env = append(env, fmt.Sprintf("%s=%s", modelVar, modelToUse))
 			}
 		}
 	}
@@ -171,11 +176,20 @@ func printDryRun(tool *tools.Tool, acc *config.ResolvedAccount, timeout time.Dur
 	fmt.Printf("Key: %s...\n", acc.Key[:min(len(acc.Key), 8)])
 	fmt.Printf("Protocol: %s\n", acc.Protocol)
 	fmt.Printf("URL: %s\n", acc.ProtocolURL)
-	if model != "" {
+	// Show model info
+	modelToShow := model
+	if modelToShow == "" && acc.Model != "" {
+		modelToShow = acc.Model
+	}
+	if modelToShow != "" {
 		if modelVar, ok := tool.EnvVars["model"]; ok {
-			fmt.Printf("Model: %s (via %s)\n", model, modelVar)
+			if model != "" {
+				fmt.Printf("Model: %s (user specified via %s)\n", modelToShow, modelVar)
+			} else {
+				fmt.Printf("Model: %s (vendor default via %s)\n", modelToShow, modelVar)
+			}
 		} else {
-			fmt.Printf("Model: %s (ignored - %s doesn't support model env var)\n", model, tool.Name)
+			fmt.Printf("Model: %s (ignored - %s doesn't support model env var)\n", modelToShow, tool.Name)
 		}
 	}
 	fmt.Printf("Timeout: %s\n", timeout)
@@ -188,9 +202,9 @@ func printDryRun(tool *tools.Tool, acc *config.ResolvedAccount, timeout time.Dur
 	if baseURLVar, ok := tool.EnvVars["base_url"]; ok {
 		fmt.Printf("  %s=%s\n", baseURLVar, acc.ProtocolURL)
 	}
-	if model != "" {
+	if modelToShow != "" {
 		if modelVar, ok := tool.EnvVars["model"]; ok {
-			fmt.Printf("  %s=%s\n", modelVar, model)
+			fmt.Printf("  %s=%s\n", modelVar, modelToShow)
 		}
 	}
 	fmt.Println()
