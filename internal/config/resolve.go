@@ -78,8 +78,24 @@ func (c *Config) ResolveAccount(accountName string, toolName string, toolProtoco
 	}
 
 	// 5. Determine endpoint to use
-	// Priority: Account.Endpoint > Tool.Protocol
-	endpointName := acc.Endpoint
+	// Priority: Account.Endpoints[protocol] > Key.Endpoints[protocol] > Tool.Protocol
+	endpointName := ""
+
+	// Check Account for protocol-specific override
+	if acc.Endpoints != nil {
+		if ep, ok := acc.Endpoints[toolProtocol]; ok {
+			endpointName = ep
+		}
+	}
+
+	// Check Key for protocol-specific override
+	if endpointName == "" && key.Endpoints != nil {
+		if ep, ok := key.Endpoints[toolProtocol]; ok {
+			endpointName = ep
+		}
+	}
+
+	// Default to tool's protocol
 	if endpointName == "" {
 		endpointName = toolProtocol
 	}
@@ -91,34 +107,8 @@ func (c *Config) ResolveAccount(accountName string, toolName string, toolProtoco
 			Message:  fmt.Sprintf("Cannot determine endpoint for tool '%s'", toolName),
 			Suggestions: []string{
 				"Add the tool to the 'tools' section in your config with its protocol",
-				"Or specify 'endpoint: <name>' in the account configuration",
+				"Or specify 'endpoints: {<protocol>: <endpoint>}' in the account or key configuration",
 			},
-		}
-	}
-
-	// 6. Check if key is restricted to specific endpoints
-	if len(key.Endpoints) > 0 {
-		allowed := false
-		for _, ep := range key.Endpoints {
-			if ep == endpointName {
-				allowed = true
-				break
-			}
-		}
-		if !allowed {
-			err := &errors.Error{
-				Code:     "AIM-KEY-002",
-				Category: "ACC",
-				Message:  fmt.Sprintf("Key '%s' is not allowed to use endpoint '%s'", keyName, endpointName),
-				Suggestions: []string{
-					"Add the endpoint to the 'endpoints' list in the key configuration",
-					"Or remove the 'endpoints' restriction from the key",
-				},
-			}
-			if len(key.Endpoints) > 0 {
-				err.Details = map[string]interface{}{"allowed": key.Endpoints}
-			}
-			return nil, err
 		}
 	}
 

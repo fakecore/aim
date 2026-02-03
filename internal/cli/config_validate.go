@@ -117,17 +117,17 @@ func configValidate(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		// Validate endpoints restriction (if specified)
-		for _, epName := range key.Endpoints {
+		// Validate endpoints (if specified)
+		for protocol, endpointName := range key.Endpoints {
 			vendor, ok := cfg.Vendors[key.Vendor]
 			if !ok {
 				continue // Vendor error already reported above
 			}
-			if _, ok := vendor.Endpoints[epName]; !ok {
+			if _, ok := vendor.Endpoints[endpointName]; !ok {
 				issues = append(issues, ValidationIssue{
 					Level:   "warning",
-					Field:   fmt.Sprintf("%s.endpoints", prefix),
-					Message: fmt.Sprintf("Endpoint '%s' not found in vendor '%s'", epName, key.Vendor),
+					Field:   fmt.Sprintf("%s.endpoints.%s", prefix, protocol),
+					Message: fmt.Sprintf("Endpoint '%s' not found in vendor '%s'", endpointName, key.Vendor),
 				})
 			}
 		}
@@ -164,20 +164,22 @@ func configValidate(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		// Validate endpoint override (if specified)
-		if acc.Endpoint != "" && acc.Key != "" {
+		// Validate endpoint overrides (if specified)
+		if len(acc.Endpoints) > 0 && acc.Key != "" {
 			if key, ok := cfg.Keys[acc.Key]; ok {
 				vendor, ok := cfg.Vendors[key.Vendor]
 				if !ok {
 					// Vendor error already reported
 					continue
 				}
-				if _, ok := vendor.Endpoints[acc.Endpoint]; !ok {
-					issues = append(issues, ValidationIssue{
-						Level:   "error",
-						Field:   fmt.Sprintf("%s.endpoint", prefix),
-						Message: fmt.Sprintf("Endpoint '%s' not found in vendor '%s'", acc.Endpoint, key.Vendor),
-					})
+				for protocol, endpointName := range acc.Endpoints {
+					if _, ok := vendor.Endpoints[endpointName]; !ok {
+						issues = append(issues, ValidationIssue{
+							Level:   "error",
+							Field:   fmt.Sprintf("%s.endpoints.%s", prefix, protocol),
+							Message: fmt.Sprintf("Endpoint '%s' not found in vendor '%s'", endpointName, key.Vendor),
+						})
+					}
 				}
 			}
 		}

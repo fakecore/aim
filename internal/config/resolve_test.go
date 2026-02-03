@@ -145,8 +145,10 @@ func TestResolveAccount_AccountEndpointOverride(t *testing.T) {
 		},
 		Accounts: map[string]Account{
 			"deepseek": {
-				Key:      "deepseek-key",
-				Endpoint: "openai", // Override to openai even though tool wants anthropic
+				Key: "deepseek-key",
+				Endpoints: map[string]string{
+					"anthropic": "openai", // Override anthropic to use openai endpoint
+				},
 			},
 		},
 	}
@@ -157,7 +159,7 @@ func TestResolveAccount_AccountEndpointOverride(t *testing.T) {
 	assert.Equal(t, "https://api.deepseek.com/v1", resolved.EndpointURL)
 }
 
-func TestResolveAccount_KeyEndpointRestriction(t *testing.T) {
+func TestResolveAccount_KeyEndpointOverride(t *testing.T) {
 	cfg := &Config{
 		Version: "2",
 		Vendors: map[string]vendors.VendorConfig{
@@ -169,14 +171,19 @@ func TestResolveAccount_KeyEndpointRestriction(t *testing.T) {
 					"anthropic": {
 						URL: "https://api.deepseek.com/anthropic",
 					},
+					"openai-coding": {
+						URL: "https://api.deepseek.com/coding/v1",
+					},
 				},
 			},
 		},
 		Keys: map[string]Key{
 			"deepseek-key": {
-				Value:     "sk-test",
-				Vendor:    "deepseek",
-				Endpoints: []string{"openai"}, // Only allow openai
+				Value:  "sk-test",
+				Vendor: "deepseek",
+				Endpoints: map[string]string{
+					"openai": "openai-coding", // Key overrides openai to use coding endpoint
+				},
 			},
 		},
 		Accounts: map[string]Account{
@@ -184,10 +191,60 @@ func TestResolveAccount_KeyEndpointRestriction(t *testing.T) {
 		},
 	}
 
-	// Should fail because key doesn't allow anthropic endpoint
-	_, err := cfg.ResolveAccount("deepseek", "claude-code", "anthropic")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "not allowed to use endpoint")
+	// Key endpoint override should apply
+	resolved, err := cfg.ResolveAccount("deepseek", "codex", "openai")
+	require.NoError(t, err)
+	assert.Equal(t, "openai-coding", resolved.Endpoint)
+	assert.Equal(t, "https://api.deepseek.com/coding/v1", resolved.EndpointURL)
+
+	// anthropic protocol should use default (no override in key)
+	resolved, err = cfg.ResolveAccount("deepseek", "cc", "anthropic")
+	require.NoError(t, err)
+	assert.Equal(t, "anthropic", resolved.Endpoint)
+}
+
+func TestResolveAccount_AccountOverridesKey(t *testing.T) {
+	cfg := &Config{
+		Version: "2",
+		Vendors: map[string]vendors.VendorConfig{
+			"deepseek": {
+				Endpoints: map[string]vendors.EndpointConfig{
+					"openai": {
+						URL: "https://api.deepseek.com/v1",
+					},
+					"anthropic": {
+						URL: "https://api.deepseek.com/anthropic",
+					},
+					"openai-coding": {
+						URL: "https://api.deepseek.com/coding/v1",
+					},
+				},
+			},
+		},
+		Keys: map[string]Key{
+			"deepseek-key": {
+				Value:  "sk-test",
+				Vendor: "deepseek",
+				Endpoints: map[string]string{
+					"openai": "openai-coding",
+				},
+			},
+		},
+		Accounts: map[string]Account{
+			"deepseek": {
+				Key: "deepseek-key",
+				Endpoints: map[string]string{
+					"openai": "openai", // Account overrides key's preference
+				},
+			},
+		},
+	}
+
+	// Account endpoint override should take priority over key's
+	resolved, err := cfg.ResolveAccount("deepseek", "codex", "openai")
+	require.NoError(t, err)
+	assert.Equal(t, "openai", resolved.Endpoint)
+	assert.Equal(t, "https://api.deepseek.com/v1", resolved.EndpointURL)
 }
 
 func TestGetDefaultAccount(t *testing.T) {
@@ -226,4 +283,55 @@ func TestGetDefaultAccount_NoDefault(t *testing.T) {
 
 	_, err := cfg.GetDefaultAccount()
 	assert.Error(t, err)
+}
+
+func TestResolveAccount_ProtocolSpecificEndpoint(t *testing.T) {
+	cfg := &Config{
+		Version: "2",
+		Vendors: map[string]vendors.VendorConfig{
+			"glm": {
+				Endpoints: map[string]vendors.EndpointConfig{
+					"openai": {
+						URL:          "https://open.bigmodel.cn/api/paas/v4",
+						DefaultModel: "glm-4.7",
+					},
+					"openai-coding": {
+						URL:          "https://open.bigmodel.cn/api/coding/paas/v4",
+						DefaultModel: "glm-4-coding",
+					},
+					"anthropic": {
+						URL:          "https://open.bigmodel.cn/api/anthropic",
+						DefaultModel: "glm-4.7",
+					},
+				},
+			},
+		},
+		Keys: map[string]Key{
+			"glm-key": {
+				Value:  "sk-test",
+				Vendor: "glm",
+			},
+		},
+		Accounts: map[string]Account{
+			"glm-coding": {
+				Key: "glm-key",
+				Endpoints: map[string]string{
+					"openai":    "openai-coding",
+					"anthropic": "anthropic",
+				},
+			},
+		},
+	}
+
+	// Test with openai protocol - should use openai-coding
+	resolved, err := cfg.ResolveAccount("glm-coding", "codex", "openai")
+	require.NoError(t, err)
+	assert.Equal(t, "openai-coding", resolved.Endpoint)
+	assert.Equal(t, "https://open.bigmodel.cn/api/coding/paas/v4", resolved.EndpointURL)
+
+	// Test with anthropic protocol - should use anthropic
+	resolved, err = cfg.ResolveAccount("glm-coding", "cc", "anthropic")
+	require.NoError(t, err)
+	assert.Equal(t, "anthropic", resolved.Endpoint)
+	assert.Equal(t, "https://open.bigmodel.cn/api/anthropic", resolved.EndpointURL)
 }

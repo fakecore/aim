@@ -24,17 +24,17 @@ type ToolConfig struct {
 
 // Key represents a key configuration
 type Key struct {
-	Value     string   `yaml:"value"`
-	Vendor    string   `yaml:"vendor"`
-	Endpoints []string `yaml:"endpoints,omitempty"` // Optional: restrict which endpoints this key can use
+	Value     string            `yaml:"value"`
+	Vendor    string            `yaml:"vendor"`
+	Endpoints map[string]string `yaml:"endpoints,omitempty"` // Optional: protocol-specific endpoint selection (protocol -> endpoint)
 }
 
 // Account represents an account configuration
 // Account references a Key and can override endpoint/model
 type Account struct {
-	Key      string `yaml:"key"`                  // Reference to a key name
-	Endpoint string `yaml:"endpoint,omitempty"`   // Optional: override endpoint selection
-	Model    string `yaml:"model,omitempty"`      // Optional: override model
+	Key      string            `yaml:"key"`                  // Reference to a key name
+	Endpoints map[string]string `yaml:"endpoints,omitempty"` // Optional: protocol-specific endpoint overrides (protocol -> endpoint)
+	Model    string            `yaml:"model,omitempty"`      // Optional: override model
 }
 
 // UnmarshalYAML implements custom YAML unmarshaling for Account

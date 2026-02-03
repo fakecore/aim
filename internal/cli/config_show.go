@@ -70,8 +70,19 @@ func configShow(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Key: %s\n", acc.Key)
 	fmt.Printf("Vendor: %s\n", keyRef.Vendor)
 	fmt.Printf("API Key: %s...\n", truncate(keyValue, 8))
-	if acc.Endpoint != "" {
-		fmt.Printf("Endpoint (override): %s\n", acc.Endpoint)
+
+	// Show endpoint overrides
+	if len(acc.Endpoints) > 0 {
+		fmt.Println("Endpoint Overrides (protocol -> endpoint):")
+		for protocol, endpoint := range acc.Endpoints {
+			fmt.Printf("  %s -> %s\n", protocol, endpoint)
+		}
+	}
+	if len(keyRef.Endpoints) > 0 {
+		fmt.Println("Key Endpoint Defaults (protocol -> endpoint):")
+		for protocol, endpoint := range keyRef.Endpoints {
+			fmt.Printf("  %s -> %s\n", protocol, endpoint)
+		}
 	}
 	if acc.Model != "" {
 		fmt.Printf("Model (override): %s\n", acc.Model)
