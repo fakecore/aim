@@ -9,7 +9,7 @@ var BuiltinVendors = map[string]Vendor{
 		},
 		DefaultModels: map[string]string{
 			"openai":    "deepseek-chat",
-			"anthropic": "claude-3-sonnet",
+			"anthropic": "deepseek-chat", // DeepSeek maps all model names to deepseek-chat
 		},
 	},
 	"glm": {
@@ -19,7 +19,7 @@ var BuiltinVendors = map[string]Vendor{
 		},
 		DefaultModels: map[string]string{
 			"openai":    "glm-4.7",
-			"anthropic": "claude-3-sonnet",
+			"anthropic": "glm-4.7", // GLM maps anthropic model names to GLM models
 		},
 	},
 	"glm-coding": {

@@ -112,9 +112,10 @@ func execute(tool *tools.Tool, acc *config.ResolvedAccount, timeout time.Duratio
 		}
 
 		// Inject model
-		// Priority: 1. User specified (-m flag), 2. Vendor default model, 3. Skip if tool doesn't support
+		// Priority: 1. User specified (-m flag), 2. Vendor default model (for openai), 3. Skip
+		// For anthropic protocol, most vendors auto-map model names, so we don't inject default
 		modelToUse := model
-		if modelToUse == "" && acc.Model != "" {
+		if modelToUse == "" && acc.Protocol == "openai" && acc.Model != "" {
 			modelToUse = acc.Model
 		}
 		if modelToUse != "" {
@@ -177,8 +178,10 @@ func printDryRun(tool *tools.Tool, acc *config.ResolvedAccount, timeout time.Dur
 	fmt.Printf("Protocol: %s\n", acc.Protocol)
 	fmt.Printf("URL: %s\n", acc.ProtocolURL)
 	// Show model info
+	// For anthropic protocol, model is auto-mapped by vendor endpoint (not injected)
+	// For openai protocol, model is injected if specified by user or vendor has default
 	modelToShow := model
-	if modelToShow == "" && acc.Model != "" {
+	if modelToShow == "" && acc.Protocol == "openai" && acc.Model != "" {
 		modelToShow = acc.Model
 	}
 	if modelToShow != "" {
@@ -191,6 +194,9 @@ func printDryRun(tool *tools.Tool, acc *config.ResolvedAccount, timeout time.Dur
 		} else {
 			fmt.Printf("Model: %s (ignored - %s doesn't support model env var)\n", modelToShow, tool.Name)
 		}
+	}
+	if modelToShow == "" && acc.Protocol == "anthropic" {
+		fmt.Printf("Model: auto-mapped by %s endpoint\n", acc.Vendor)
 	}
 	fmt.Printf("Timeout: %s\n", timeout)
 	fmt.Println()
