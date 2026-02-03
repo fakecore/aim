@@ -24,10 +24,12 @@ var BuiltinVendors = map[string]Vendor{
 	},
 	"glm-coding": {
 		Protocols: map[string]string{
-			"openai": "https://open.bigmodel.cn/api/coding/paas/v4",
+			"openai":    "https://open.bigmodel.cn/api/coding/paas/v4",
+			"anthropic": "https://open.bigmodel.cn/api/anthropic",
 		},
 		DefaultModels: map[string]string{
-			"openai": "glm-4.7",
+			"openai":    "glm-4.7",
+			"anthropic": "glm-4.7",
 		},
 	},
 	"kimi": {
@@ -50,10 +52,12 @@ var BuiltinVendors = map[string]Vendor{
 	},
 	"qwen": {
 		Protocols: map[string]string{
-			"openai": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+			"openai":    "https://dashscope.aliyuncs.com/compatible-mode/v1",
+			"anthropic": "https://dashscope.aliyuncs.com/api/v2/apps/claude-code-proxy",
 		},
 		DefaultModels: map[string]string{
-			"openai": "qwen3-max",
+			"openai":    "qwen3-max",
+			"anthropic": "qwen3-max",
 		},
 	},
 }
