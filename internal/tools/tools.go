@@ -27,9 +27,9 @@ var BuiltinTools = map[string]Tool{
 		Command:  "codex",
 		Protocol: "openai",
 		EnvVars: map[string]string{
-			"api_key": "OPENAI_API_KEY",
-			// Codex doesn't support base_url or model via env vars
-			// base_url is configured in ~/.codex/config.toml
+			"api_key":  "OPENAI_API_KEY",
+			"base_url": "OPENAI_BASE_URL",
+			// Codex doesn't support model via env var
 			// model is set via --model flag or config file
 		},
 	},
