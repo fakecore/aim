@@ -7,7 +7,8 @@ GIT_COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 LDFLAGS=-ldflags "-X github.com/fakecore/aim/internal/cmd.Version=$(VERSION) \
 	-X github.com/fakecore/aim/internal/cmd.GitCommit=$(GIT_COMMIT) \
-	-X github.com/fakecore/aim/internal/cmd.BuildDate=$(BUILD_DATE)"
+	-X github.com/fakecore/aim/internal/cmd.BuildDate=$(BUILD_DATE)" \
+	-trimpath
 
 # Directories
 BIN_DIR=bin
