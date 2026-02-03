@@ -13,19 +13,31 @@ func (m Model) View() string {
 		return m.unsupportedView()
 	}
 
+	// Build the content
 	var sections []string
 	sections = append(sections, m.renderHeader())
 	sections = append(sections, m.renderContent())
 	sections = append(sections, m.renderFooter())
 
-	return lipgloss.JoinVertical(lipgloss.Left, sections...)
+	content := lipgloss.JoinVertical(lipgloss.Left, sections...)
+
+	// Fill remaining height with background
+	availableHeight := m.height - lipgloss.Height(content)
+	if availableHeight > 0 {
+		filler := backgroundStyle.Height(availableHeight).Render("")
+		content = lipgloss.JoinVertical(lipgloss.Left, content, filler)
+	}
+
+	// Ensure full width background
+	return backgroundStyle.Width(m.width).Render(content)
 }
 
 func (m Model) unsupportedView() string {
-	return fmt.Sprintf(
+	msg := fmt.Sprintf(
 		"Terminal too small\n\nCurrent: %d x %d\nMinimum: 60 x 15\n\nPlease resize and retry",
 		m.width, m.height,
 	)
+	return backgroundStyle.Width(m.width).Height(m.height).Render(msg)
 }
 
 func (m Model) renderHeader() string {
@@ -38,56 +50,81 @@ func (m Model) renderHeader() string {
 		}
 		rendered = append(rendered, style.Render(tab))
 	}
-	return lipgloss.JoinHorizontal(lipgloss.Left, rendered...)
+	header := lipgloss.JoinHorizontal(lipgloss.Left, rendered...)
+
+	// Fill remaining width
+	headerWidth := lipgloss.Width(header)
+	if headerWidth < m.width {
+		filler := backgroundStyle.Width(m.width - headerWidth).Render("")
+		header = lipgloss.JoinHorizontal(lipgloss.Left, header, filler)
+	}
+
+	return header
 }
 
 func (m Model) renderContent() string {
+	// Calculate available height for content
+	headerHeight := 1
+	footerHeight := 2
+	availableHeight := m.height - headerHeight - footerHeight
+	if availableHeight < 1 {
+		availableHeight = 1
+	}
+
 	switch m.activeTab {
 	case TabConfig:
-		return m.renderConfigTab()
+		return m.renderConfigTab(availableHeight)
 	case TabStatus:
-		return m.renderStatusTab()
+		return m.renderStatusTab(availableHeight)
 	default:
-		return placeholderStyle.Render("Coming soon...")
+		return m.renderPlaceholderTab(availableHeight)
 	}
 }
 
-func (m Model) renderConfigTab() string {
+func (m Model) renderConfigTab(height int) string {
 	if m.layout == LayoutSplit {
-		left := m.renderAccountList()
-		right := m.renderPreview()
-		return lipgloss.JoinHorizontal(
-			lipgloss.Top,
-			leftPanelStyle.Render(left),
-			rightPanelStyle.Render(right),
-		)
+		// Split layout: left panel fixed width, right panel takes remaining
+		leftWidth := 30
+		rightWidth := m.width - leftWidth
+
+		left := m.renderAccountList(height)
+		right := m.renderPreview(height)
+
+		leftRendered := leftPanelStyle.Width(leftWidth).Height(height).Render(left)
+		rightRendered := rightPanelStyle.Width(rightWidth).Height(height).Render(right)
+
+		return lipgloss.JoinHorizontal(lipgloss.Top, leftRendered, rightRendered)
 	}
+
+	// Single layout
 	if m.showPreview {
-		return m.renderPreview()
+		return rightPanelStyle.Width(m.width).Height(height).Render(m.renderPreview(height))
 	}
-	return m.renderAccountList()
+	return leftPanelStyle.Width(m.width).Height(height).Render(m.renderAccountList(height))
 }
 
-func (m Model) renderAccountList() string {
+func (m Model) renderAccountList(height int) string {
 	var lines []string
 	lines = append(lines, titleStyle.Render("ACCOUNTS"))
 	lines = append(lines, "")
+
 	for i, name := range m.accounts {
 		prefix := "  "
 		if i == m.selectedIdx {
 			prefix = "> "
 		}
 		acc := m.config.Accounts[name]
-		status := "✓"
+		status := successIcon
 		if acc.Key == "" {
-			status = "⚠"
+			status = warningIcon
 		}
 		line := fmt.Sprintf("%s%s %s", prefix, status, name)
 		if i == m.selectedIdx {
-			line = selectedStyle.Render(line)
+			line = selectedStyle.Width(28).Render(line)
 		}
 		lines = append(lines, line)
 	}
+
 	if m.layout == LayoutSingle {
 		lines = append(lines, "")
 		lines = append(lines, helpStyle.Render("Tab: switch to preview"))
@@ -103,12 +140,23 @@ func (m Model) renderAccountList() string {
 	lines = append(lines, "")
 	lines = append(lines, helpStyle.Render("n: new  e: edit  d: delete  q: quit"))
 
-	return strings.Join(lines, "\n")
+	content := strings.Join(lines, "\n")
+
+	// Fill remaining height
+	contentHeight := strings.Count(content, "\n") + 1
+	if contentHeight < height {
+		filler := strings.Repeat("\n", height-contentHeight)
+		content += filler
+	}
+
+	return content
 }
 
-func (m Model) renderPreview() string {
+func (m Model) renderPreview(height int) string {
 	if len(m.accounts) == 0 {
-		return placeholderStyle.Render("No accounts configured\n\nPress 'n' to create one")
+		return placeholderStyle.Width(m.width - 4).Height(height - 2).Render(
+			"No accounts configured\n\nPress 'n' to create one",
+		)
 	}
 
 	name := m.accounts[m.selectedIdx]
@@ -119,19 +167,16 @@ func (m Model) renderPreview() string {
 	lines = append(lines, "")
 
 	// Account info
-	lines = append(lines, fmt.Sprintf("Account: %s", name))
-	lines = append(lines, fmt.Sprintf("Vendor: %s", acc.Vendor))
-	if acc.Vendor == "" {
-		lines = append(lines, fmt.Sprintf("  (inferred: %s)", name))
-	}
+	lines = append(lines, keyStyle.Render("Account: ")+valueStyle.Render(name))
+	lines = append(lines, keyStyle.Render("Vendor:  ")+valueStyle.Render(acc.Vendor))
 	lines = append(lines, "")
 
 	// Supported tools
-	lines = append(lines, "Supported tools:")
+	lines = append(lines, titleStyle.Render("SUPPORTED TOOLS"))
 	lines = append(lines, "")
 
 	// claude-code
-	lines = append(lines, lipgloss.NewStyle().Bold(true).Render("claude-code"))
+	lines = append(lines, lipgloss.NewStyle().Bold(true).Foreground(blue).Render("claude-code"))
 	lines = append(lines, fmt.Sprintf("  $ aim run cc -a %s", name))
 	if acc.Key != "" {
 		key, _ := config.ResolveKey(acc.Key)
@@ -140,7 +185,7 @@ func (m Model) renderPreview() string {
 	lines = append(lines, "")
 
 	// codex
-	lines = append(lines, lipgloss.NewStyle().Bold(true).Render("codex"))
+	lines = append(lines, lipgloss.NewStyle().Bold(true).Foreground(green).Render("codex"))
 	lines = append(lines, fmt.Sprintf("  $ aim run codex -a %s", name))
 	lines = append(lines, "")
 
@@ -148,7 +193,47 @@ func (m Model) renderPreview() string {
 		lines = append(lines, helpStyle.Render("Tab: switch to accounts"))
 	}
 
-	return strings.Join(lines, "\n")
+	content := strings.Join(lines, "\n")
+
+	// Fill remaining height
+	contentHeight := strings.Count(content, "\n") + 1
+	if contentHeight < height {
+		filler := strings.Repeat("\n", height-contentHeight)
+		content += filler
+	}
+
+	return content
+}
+
+func (m Model) renderStatusTab(height int) string {
+	var lines []string
+	lines = append(lines, titleStyle.Render("STATUS"))
+	lines = append(lines, "")
+	lines = append(lines, "Coming soon...")
+
+	content := strings.Join(lines, "\n")
+
+	// Fill remaining height
+	contentHeight := strings.Count(content, "\n") + 1
+	if contentHeight < height {
+		filler := strings.Repeat("\n", height-contentHeight)
+		content += filler
+	}
+
+	return leftPanelStyle.Width(m.width).Height(height).Render(content)
+}
+
+func (m Model) renderPlaceholderTab(height int) string {
+	content := placeholderStyle.Render("Coming soon...")
+
+	// Fill remaining height
+	contentHeight := lipgloss.Height(content)
+	if contentHeight < height {
+		filler := backgroundStyle.Height(height - contentHeight).Render("")
+		content = lipgloss.JoinVertical(lipgloss.Top, content, filler)
+	}
+
+	return backgroundStyle.Width(m.width).Height(height).Render(content)
 }
 
 func truncate(s string, n int) string {
@@ -158,11 +243,16 @@ func truncate(s string, n int) string {
 	return s[:n]
 }
 
-func (m Model) renderStatusTab() string {
-	return placeholderStyle.Render("Status tab - Coming soon")
-}
-
 func (m Model) renderFooter() string {
 	help := "? Help  v Vendors  q Quit"
-	return footerStyle.Render(help)
+	footer := footerStyle.Render(help)
+
+	// Fill remaining width
+	footerWidth := lipgloss.Width(footer)
+	if footerWidth < m.width {
+		filler := backgroundStyle.Width(m.width - footerWidth).Render("")
+		footer = lipgloss.JoinHorizontal(lipgloss.Left, footer, filler)
+	}
+
+	return footer
 }

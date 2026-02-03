@@ -285,6 +285,17 @@ var (
 		Foreground(red)
 )
 
+// Icons
+const (
+	successIcon  = "✓"
+	warningIcon  = "⚠"
+	errorIcon    = "✗"
+	infoIcon     = "ℹ"
+	pendingIcon  = "○"
+	selectedIcon = ">"
+	unselectedIcon = " "
+)
+
 // Helper functions for dynamic styles
 
 // WithBackground returns a style with the terminal background
