@@ -23,11 +23,16 @@ var (
 )
 
 var runCmd = &cobra.Command{
-	Use:   "run <tool>",
+	Use:   "run <tool> [-- <args>...]",
 	Short: "Run an AI tool with the specified account",
-	Long:  `Run an AI tool (claude-code, codex, etc.) with environment configured for the specified account.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  run,
+	Long:  `Run an AI tool (claude-code, codex, etc.) with environment configured for the specified account.
+
+Use -- to pass arguments to the tool:
+  aim run cc -- -h           # Show claude-code help
+  aim run codex -- file.txt  # Run codex on a file`,
+	Args:               cobra.MinimumNArgs(1),
+	DisableFlagParsing: false,
+	RunE:               run,
 }
 
 func init() {
