@@ -44,10 +44,12 @@ var BuiltinVendors = map[string]Vendor{
 	},
 	"kimi-coding": {
 		Protocols: map[string]string{
-			"openai": "https://api.kimi.com/coding/v1",
+			"openai":    "https://api.kimi.com/coding/v1",
+			"anthropic": "https://api.kimi.com/coding",
 		},
 		DefaultModels: map[string]string{
-			"openai": "kimi-for-coding",
+			"openai":    "kimi-for-coding",
+			"anthropic": "kimi-for-coding",
 		},
 	},
 	"qwen": {

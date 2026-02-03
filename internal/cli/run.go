@@ -1,13 +1,9 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"os/exec"
-	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/fakecore/aim/internal/config"
 	"github.com/fakecore/aim/internal/errors"
@@ -17,7 +13,6 @@ import (
 
 var (
 	accountName string
-	timeout     string
 	dryRun      bool
 	native      bool
 	model       string
@@ -38,7 +33,6 @@ Use -- to pass arguments to the tool:
 
 func init() {
 	runCmd.Flags().StringVarP(&accountName, "account", "a", "", "Account to use")
-	runCmd.Flags().StringVar(&timeout, "timeout", "", "Command timeout (e.g., 5m, 1h)")
 	runCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be executed without running")
 	runCmd.Flags().BoolVar(&native, "native", false, "Run tool without env injection")
 	runCmd.Flags().StringVarP(&model, "model", "m", "", "Model to use (e.g., claude-3-opus-20240229, gpt-4o)")
@@ -53,50 +47,58 @@ func run(cmd *cobra.Command, args []string) error {
 		return errors.Wrap(errors.ErrToolNotFound, toolName)
 	}
 
-	// Load config
-	cfg, err := config.Load(config.ConfigPath())
-	if err != nil {
-		return err
-	}
-
-	// Determine account
-	if accountName == "" {
-		accountName, err = cfg.GetDefaultAccount()
-		if err != nil {
-			return err
-		}
-	}
-
-	// Resolve account
-	resolved, err := cfg.ResolveAccount(accountName, tool.Name, tool.Protocol)
-	if err != nil {
-		return err
-	}
-
-	// Get timeout
-	timeoutDuration := cfg.Options.CommandTimeout
-	if timeout != "" {
-		timeoutDuration = timeout
-	}
-	duration, err := time.ParseDuration(timeoutDuration)
-	if err != nil {
-		return fmt.Errorf("invalid timeout: %w", err)
-	}
-
 	// Get remaining args (after --)
 	toolArgs := args[1:]
 
+	// If native mode, skip account resolution
+	if native {
+		if dryRun {
+			printDryRunNative(tool, toolArgs)
+			return nil
+		}
+		return execute(tool, nil, toolArgs, true)
+	}
+
+	// Try to load config and resolve account
+	var resolved *config.ResolvedAccount
+	cfg, err := config.Load(config.ConfigPath())
+	if err == nil {
+		// Determine account
+		accName := accountName
+		if accName == "" {
+			accName, _ = cfg.GetDefaultAccount()
+		}
+		if accName != "" {
+			resolved, err = cfg.ResolveAccount(accName, tool.Name, tool.Protocol)
+			if err != nil && accountName != "" {
+				// User explicitly specified an account, so report the error
+				return err
+			}
+		}
+	} else if accountName != "" {
+		// User explicitly specified an account but config failed to load
+		return err
+	}
+
 	// Dry run mode
 	if dryRun {
-		printDryRun(tool, resolved, duration, toolArgs)
+		if resolved != nil {
+			printDryRun(tool, resolved, toolArgs)
+		} else {
+			printDryRunNative(tool, toolArgs)
+		}
 		return nil
 	}
 
-	// Execute
-	return execute(tool, resolved, duration, toolArgs, native)
+	// Execute - fallback to native if no account resolved
+	if resolved == nil {
+		// Print colored warning
+		fmt.Fprintf(os.Stderr, "\033[33m⚡ No account configured, running in native mode\033[0m\n")
+	}
+	return execute(tool, resolved, toolArgs, resolved == nil)
 }
 
-func execute(tool *tools.Tool, acc *config.ResolvedAccount, timeout time.Duration, args []string, native bool) error {
+func execute(tool *tools.Tool, acc *config.ResolvedAccount, args []string, native bool) error {
 	// Build env vars
 	env := os.Environ()
 
@@ -125,53 +127,68 @@ func execute(tool *tools.Tool, acc *config.ResolvedAccount, timeout time.Duratio
 		}
 	}
 
-	// Create timeout context
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	// Create command
-	cmd := exec.CommandContext(ctx, tool.Command, args...)
-	cmd.Env = env
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	// Create new process group for signal forwarding
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Setpgid: true,
+	// Find executable path
+	binPath, err := findExecutable(tool.Command)
+	if err != nil {
+		return errors.Wrap(errors.ErrCommandNotFound, tool.Command)
 	}
 
-	// Start command
-	if err := cmd.Start(); err != nil {
-		if os.IsNotExist(err) {
-			return errors.Wrap(errors.ErrCommandNotFound, tool.Command)
-		}
-		return errors.WrapWithCause(errors.ErrToolNotFound, err, tool.Name)
-	}
+	// Build argv (first element is the command name)
+	argv := append([]string{tool.Command}, args...)
 
-	// Forward signals to process group
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		for sig := range sigChan {
-			syscall.Kill(-cmd.Process.Pid, sig.(syscall.Signal))
-		}
-	}()
-
-	// Wait for completion
-	err := cmd.Wait()
-	signal.Stop(sigChan)
-	close(sigChan)
-
-	// Check timeout
-	if ctx.Err() == context.DeadlineExceeded {
-		return errors.Wrap(errors.ErrExecutionTimeout, timeout)
-	}
-
-	return err
+	// Replace current process with the tool
+	return syscall.Exec(binPath, argv, env)
 }
 
-func printDryRun(tool *tools.Tool, acc *config.ResolvedAccount, timeout time.Duration, args []string) {
+func findExecutable(name string) (string, error) {
+	// If it's an absolute path, use it directly
+	if name[0] == '/' {
+		return name, nil
+	}
+
+	// Search in PATH
+	path := os.Getenv("PATH")
+	for _, dir := range splitPath(path) {
+		full := dir + "/" + name
+		if info, err := os.Stat(full); err == nil && !info.IsDir() {
+			return full, nil
+		}
+	}
+	return "", fmt.Errorf("executable not found: %s", name)
+}
+
+func splitPath(path string) []string {
+	if path == "" {
+		return nil
+	}
+	return splitPathSeparator(path)
+}
+
+func splitPathSeparator(path string) []string {
+	var result []string
+	start := 0
+	for i := 0; i < len(path); i++ {
+		if path[i] == ':' {
+			if i > start {
+				result = append(result, path[start:i])
+			}
+			start = i + 1
+		}
+	}
+	if start < len(path) {
+		result = append(result, path[start:])
+	}
+	return result
+}
+
+func printDryRunNative(tool *tools.Tool, args []string) {
+	fmt.Printf("Tool: %s (command: %s)\n", tool.Name, tool.Command)
+	fmt.Println("Mode: native (no env injection)")
+	fmt.Println()
+	fmt.Printf("Command: %s %v\n", tool.Command, args)
+}
+
+func printDryRun(tool *tools.Tool, acc *config.ResolvedAccount, args []string) {
 	fmt.Printf("Tool: %s (command: %s)\n", tool.Name, tool.Command)
 	fmt.Printf("Account: %s\n", acc.Name)
 	fmt.Printf("Key: %s...\n", acc.Key[:min(len(acc.Key), 8)])
@@ -198,7 +215,6 @@ func printDryRun(tool *tools.Tool, acc *config.ResolvedAccount, timeout time.Dur
 	if modelToShow == "" && acc.Protocol == "anthropic" {
 		fmt.Printf("Model: auto-mapped by %s endpoint\n", acc.Vendor)
 	}
-	fmt.Printf("Timeout: %s\n", timeout)
 	fmt.Println()
 	fmt.Println("Environment:")
 	// Show all configured env vars
@@ -215,12 +231,5 @@ func printDryRun(tool *tools.Tool, acc *config.ResolvedAccount, timeout time.Dur
 	}
 	fmt.Println()
 	fmt.Printf("Command: %s %v\n", tool.Command, args)
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
