@@ -9,11 +9,16 @@ import (
 )
 
 func TestMigrate_NoV1Config(t *testing.T) {
+	// Use empty config but don't create v1
 	setup := NewTestSetup(t, `
 version: "2"
 accounts:
   deepseek: sk-key
 `)
+
+	// Ensure no v1 config exists by using a temp home
+	tmpHome := t.TempDir()
+	setup.SetEnv("HOME", tmpHome)
 
 	result := setup.Run("migrate")
 

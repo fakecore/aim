@@ -17,6 +17,13 @@ type VendorConfig struct {
 func Resolve(name string, vendors map[string]VendorConfig) (*Vendor, error) {
 	// Check user-defined vendors
 	if v, ok := vendors[name]; ok {
+		// If vendor name matches a builtin and no base is specified,
+		// automatically use the builtin as base
+		if v.Base == "" && v.Builtin == "" {
+			if _, isBuiltin := BuiltinVendors[name]; isBuiltin {
+				v.Builtin = name
+			}
+		}
 		return resolveWithBase(v, vendors)
 	}
 
@@ -42,6 +49,13 @@ func resolveWithBase(v VendorConfig, allVendors map[string]VendorConfig) (*Vendo
 		}
 		for proto, url := range base.Protocols {
 			result.Protocols[proto] = url
+		}
+	} else if v.Builtin != "" {
+		// Use builtin as base
+		if builtin, ok := BuiltinVendors[v.Builtin]; ok {
+			for proto, url := range builtin.Protocols {
+				result.Protocols[proto] = url
+			}
 		}
 	}
 
