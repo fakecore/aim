@@ -34,7 +34,7 @@ func (m Model) View() string {
 
 func (m Model) unsupportedView() string {
 	msg := fmt.Sprintf(
-		"Terminal too small\n\nCurrent: %d x %d\nMinimum: 60 x 15\n\nPlease resize and retry",
+		"Terminal too small\n\nCurrent: %d x %d\nMinimum: 40 x 10\n\nPlease resize and retry",
 		m.width, m.height,
 	)
 	return backgroundStyle.Width(m.width).Height(m.height).Render(msg)

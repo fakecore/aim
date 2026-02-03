@@ -96,11 +96,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *Model) updateLayout() {
 	// Layout breakpoints:
-	// - Unsupported: < 60 width or < 15 height
-	// - Single: 60-79 width (enough for one panel)
+	// - Unsupported: < 40 width or < 10 height (minimum usable)
+	// - Single: 40-79 width (enough for one panel)
+	//   - Account list needs ~25 chars (name + status)
+	//   - Preview needs ~35 chars (command examples)
 	// - Split: 80+ width (left 30 + right 40 + gap 2 = 72 minimum)
 	switch {
-	case m.width < 60 || m.height < 15:
+	case m.width < 40 || m.height < 10:
 		m.layout = LayoutUnsupported
 	case m.width < 80:
 		m.layout = LayoutSingle
