@@ -95,10 +95,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) updateLayout() {
+	// Layout breakpoints:
+	// - Unsupported: < 60 width or < 15 height
+	// - Single: 60-79 width (enough for one panel)
+	// - Split: 80+ width (left 30 + right 40 + gap 2 = 72 minimum)
 	switch {
 	case m.width < 60 || m.height < 15:
 		m.layout = LayoutUnsupported
-	case m.width < 100:
+	case m.width < 80:
 		m.layout = LayoutSingle
 	default:
 		m.layout = LayoutSplit
