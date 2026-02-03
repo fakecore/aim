@@ -18,7 +18,7 @@ var BuiltinVendors = map[string]Vendor{
 			"anthropic": "https://open.bigmodel.cn/api/anthropic",
 		},
 		DefaultModels: map[string]string{
-			"openai":    "glm-4",
+			"openai":    "glm-4.7",
 			"anthropic": "claude-3-sonnet",
 		},
 	},
@@ -28,8 +28,16 @@ var BuiltinVendors = map[string]Vendor{
 			"anthropic": "https://api.moonshot.cn/anthropic",
 		},
 		DefaultModels: map[string]string{
-			"openai":    "kimi-latest",
+			"openai":    "kimi-k2.5",
 			"anthropic": "claude-3-sonnet",
+		},
+	},
+	"kimi-coding": {
+		Protocols: map[string]string{
+			"openai": "https://api.kimi.com/coding/v1",
+		},
+		DefaultModels: map[string]string{
+			"openai": "kimi-for-coding",
 		},
 	},
 	"qwen": {
@@ -37,7 +45,7 @@ var BuiltinVendors = map[string]Vendor{
 			"openai": "https://dashscope.aliyuncs.com/compatible-mode/v1",
 		},
 		DefaultModels: map[string]string{
-			"openai": "qwen-max",
+			"openai": "qwen3-max",
 		},
 	},
 }
