@@ -22,6 +22,14 @@ var BuiltinVendors = map[string]Vendor{
 			"anthropic": "claude-3-sonnet",
 		},
 	},
+	"glm-coding": {
+		Protocols: map[string]string{
+			"openai": "https://open.bigmodel.cn/api/coding/paas/v4",
+		},
+		DefaultModels: map[string]string{
+			"openai": "glm-4.7",
+		},
+	},
 	"kimi": {
 		Protocols: map[string]string{
 			"openai":    "https://api.moonshot.cn/v1",
