@@ -103,7 +103,7 @@ var (
 	tabStyle = lipgloss.NewStyle().
 		Background(terminalBackground).
 		Padding(0, 2).
-		Foreground(fgComment)
+		Foreground(fgDark)
 
 	activeTabStyle = lipgloss.NewStyle().
 		Background(terminalBackground).

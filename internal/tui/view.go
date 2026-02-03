@@ -14,22 +14,24 @@ func (m Model) View() string {
 	}
 
 	// Build the content
-	var sections []string
-	sections = append(sections, m.renderHeader())
-	sections = append(sections, m.renderContent())
-	sections = append(sections, m.renderFooter())
+	var content string
 
-	content := lipgloss.JoinVertical(lipgloss.Left, sections...)
+	content += m.renderHeader()
+	content += m.renderContent()
+	content += m.renderFooter()
 
-	// Fill remaining height with background
-	availableHeight := m.height - lipgloss.Height(content)
-	if availableHeight > 0 {
-		filler := backgroundStyle.Height(availableHeight).Render("")
-		content = lipgloss.JoinVertical(lipgloss.Left, content, filler)
+	// // Fill remaining height with background
+	// availableHeight := m.height - lipgloss.Height(content)
+	// if availableHeight > 0 {
+	// 	filler := backgroundStyle.Height(availableHeight).Render("")
+	// 	content = lipgloss.JoinVertical(lipgloss.Left, content, filler)
+	// }
+
+	// Ensure full width background (only if width is set)
+	if m.width > 0 {
+		return backgroundStyle.Width(m.width).Render(content)
 	}
-
-	// Ensure full width background
-	return backgroundStyle.Width(m.width).Render(content)
+	return content
 }
 
 func (m Model) unsupportedView() string {
@@ -41,7 +43,16 @@ func (m Model) unsupportedView() string {
 }
 
 func (m Model) renderHeader() string {
-	tabs := []string{"Config", "Status", "Routes", "Usage", "Logs"}
+	// Use abbreviated tab names on narrow screens
+	var tabs []string
+	if m.width < 50 {
+		// Compact mode: use 2-3 letter abbreviations
+		tabs = []string{"Cfg", "Sts", "Rt", "Us", "Lg"}
+	} else {
+		// Full mode: use complete names
+		tabs = []string{"Config", "Status", "Routes", "Usage", "Logs"}
+	}
+
 	var rendered []string
 	for i, tab := range tabs {
 		style := tabStyle
@@ -52,8 +63,10 @@ func (m Model) renderHeader() string {
 	}
 	header := lipgloss.JoinHorizontal(lipgloss.Left, rendered...)
 
-	// Ensure full width with background
-	header = backgroundStyle.Width(m.width).Render(header)
+	// Apply width and fixed height (1) to prevent content overflow covering header
+	if m.width > 0 {
+		header = backgroundStyle.Width(m.width).Render(header)
+	}
 
 	return header
 }
@@ -63,7 +76,7 @@ func (m Model) renderContent() string {
 	// Header: tab height 1 (padding is included in the block, not extra)
 	// Footer: 2 lines (1 content + 1 padding)
 	headerHeight := 1
-	footerHeight := 2
+	footerHeight := 4
 	availableHeight := m.height - headerHeight - footerHeight
 	if availableHeight < 1 {
 		availableHeight = 1
@@ -194,7 +207,7 @@ func (m Model) renderPreview(height int) string {
 	content := strings.Join(lines, "\n")
 
 	// Fill remaining height
-	contentHeight := strings.Count(content, "\n") + 1
+	contentHeight := strings.Count(content, "\n")
 	if contentHeight < height {
 		filler := strings.Repeat("\n", height-contentHeight)
 		content += filler
@@ -222,16 +235,22 @@ func (m Model) renderStatusTab(height int) string {
 }
 
 func (m Model) renderPlaceholderTab(height int) string {
-	content := placeholderStyle.Render("Coming soon...")
+
+	var lines []string
+	lines = append(lines, "")
+	lines = append(lines, "")
+	lines = append(lines, "Coming soon...")
+
+	content := strings.Join(lines, "\n")
 
 	// Fill remaining height
-	contentHeight := lipgloss.Height(content)
+	contentHeight := strings.Count(content, "\n") + 1
 	if contentHeight < height {
-		filler := backgroundStyle.Height(height - contentHeight).Render("")
-		content = lipgloss.JoinVertical(lipgloss.Top, content, filler)
+		filler := strings.Repeat("\n", height-contentHeight)
+		content += filler
 	}
 
-	return backgroundStyle.Width(m.width).Height(height).Render(content)
+	return leftPanelStyle.Width(m.width).Height(height).Render(content)
 }
 
 func truncate(s string, n int) string {
@@ -243,5 +262,8 @@ func truncate(s string, n int) string {
 
 func (m Model) renderFooter() string {
 	help := "? Help  v Vendors  q Quit"
-	return footerStyle.Width(m.width).Render(help)
+	if m.width > 0 {
+		return footerStyle.Width(m.width).Render(help)
+	}
+	return footerStyle.Render(help)
 }

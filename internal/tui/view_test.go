@@ -633,6 +633,37 @@ func TestViewRendersTabs(t *testing.T) {
 	}
 }
 
+// TestViewRendersTabsNarrow tests that abbreviated tabs are used on narrow screens
+func TestViewRendersTabsNarrow(t *testing.T) {
+	cfg := &config.Config{
+		Version: "2",
+		Accounts: map[string]config.Account{},
+	}
+
+	m := New(cfg)
+	m.width = 40
+	m.height = 20
+	m.layout = LayoutSingle
+
+	view := m.View()
+
+	// At narrow width, abbreviated tabs should be used
+	abbrevTabs := []string{"Cfg", "Sts", "Rt", "Us", "Lg"}
+	for _, tab := range abbrevTabs {
+		if !strings.Contains(view, tab) {
+			t.Errorf("Expected view to contain abbreviated tab '%s' at narrow width", tab)
+		}
+	}
+
+	// Full names should not be present at narrow width
+	fullTabs := []string{"Config", "Status", "Routes", "Usage", "Logs"}
+	for _, tab := range fullTabs {
+		if strings.Contains(view, tab) {
+			t.Errorf("Expected view to NOT contain full tab name '%s' at narrow width", tab)
+		}
+	}
+}
+
 // TestViewRendersFooter tests that view renders footer
 func TestViewRendersFooter(t *testing.T) {
 	cfg := &config.Config{
