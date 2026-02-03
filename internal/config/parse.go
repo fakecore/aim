@@ -26,18 +26,18 @@ func Parse(data []byte) (*Config, error) {
 	}
 
 	// Set defaults
-	if cfg.Options.CommandTimeout == "" {
-		cfg.Options.CommandTimeout = "5m"
+	if cfg.Settings.CommandTimeout == "" {
+		cfg.Settings.CommandTimeout = "5m"
+	}
+	if cfg.Settings.Language == "" {
+		cfg.Settings.Language = "auto"
+	}
+	if cfg.Settings.LogLevel == "" {
+		cfg.Settings.LogLevel = "warn"
 	}
 
-	// Infer vendor from account name if not specified
-	for name, acc := range cfg.Accounts {
-		if acc.Vendor == "" {
-			// Shorthand: deepseek: ${KEY} -> vendor = deepseek
-			acc.Vendor = name
-			cfg.Accounts[name] = acc
-		}
-	}
+	// Note: Vendor must be explicitly specified in config file
+	// No implicit inference from account name
 
 	return &cfg, nil
 }

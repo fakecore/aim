@@ -34,30 +34,38 @@ func Migrate(v1 *V1Config) *config.Config {
 			Vendor: key.Provider,
 		}
 		if key.IsDefault {
-			v2.Options.DefaultAccount = name
+			v2.Settings.DefaultAccount = name
 		}
 	}
 
 	// Convert providers to vendors
-	// If provider name matches a builtin, use builtin reference
-	// Otherwise create custom vendor with openai protocol
+	// All vendors must be explicitly defined in v2
 	for name, provider := range v1.Providers {
-		if _, isBuiltin := vendors.BuiltinVendors[name]; isBuiltin {
-			// Use builtin vendor, but allow base override if different URL
+		if builtin, isBuiltin := vendors.BuiltinVendors[name]; isBuiltin {
+			// Use builtin vendor definition as base, apply v1 overrides
 			fullURL := provider.BaseURL + provider.APIPath
-			builtinURL := vendors.BuiltinVendors[name].Protocols["openai"]
-			if fullURL != builtinURL {
-				// Custom URL, create override with base
-				v2.Vendors[name] = vendors.VendorConfig{
-					Base: name,
-					Protocols: map[string]string{
-						"openai": fullURL,
-					},
-				}
+			builtinURL := builtin.Protocols["openai"]
+
+			v2.Vendors[name] = vendors.VendorConfig{
+				Protocols:     make(map[string]string),
+				DefaultModels: make(map[string]string),
 			}
-			// If URL matches builtin, don't add to vendors (use builtin directly)
+
+			// Copy all protocols from builtin
+			for proto, url := range builtin.Protocols {
+				v2.Vendors[name].Protocols[proto] = url
+			}
+			// Copy all default models from builtin
+			for proto, model := range builtin.DefaultModels {
+				v2.Vendors[name].DefaultModels[proto] = model
+			}
+
+			// Apply v1 URL override if different
+			if fullURL != builtinURL {
+				v2.Vendors[name].Protocols["openai"] = fullURL
+			}
 		} else {
-			// Custom provider
+			// Custom provider - create explicit vendor definition
 			v2.Vendors[name] = vendors.VendorConfig{
 				Protocols: map[string]string{
 					"openai": provider.BaseURL + provider.APIPath,

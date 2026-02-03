@@ -52,8 +52,8 @@ func (c *Config) ResolveAccount(name string, tool string, toolProtocol string) (
 
 // GetDefaultAccount returns the default account name
 func (c *Config) GetDefaultAccount() (string, error) {
-	if c.Options.DefaultAccount != "" {
-		return c.Options.DefaultAccount, nil
+	if c.Settings.DefaultAccount != "" {
+		return c.Settings.DefaultAccount, nil
 	}
 
 	// If only one account, use it

@@ -12,7 +12,7 @@ type Config struct {
 	Version  string                      `yaml:"version"`
 	Vendors  map[string]vendors.VendorConfig `yaml:"vendors,omitempty"`
 	Accounts map[string]Account          `yaml:"accounts"`
-	Options  Options                     `yaml:"options,omitempty"`
+	Settings Settings                    `yaml:"settings,omitempty"`
 }
 
 // Account represents an account configuration
@@ -44,10 +44,12 @@ func (a *Account) UnmarshalYAML(node *yaml.Node) error {
 	return fmt.Errorf("account must be a string or object, got %v", node.Kind)
 }
 
-// Options represents global options
-type Options struct {
+// Settings represents global settings
+type Settings struct {
 	DefaultAccount string `yaml:"default_account,omitempty"`
 	CommandTimeout string `yaml:"command_timeout,omitempty"`
+	Language       string `yaml:"language,omitempty"`
+	LogLevel       string `yaml:"log_level,omitempty"`
 }
 
 // ResolvedAccount represents a fully resolved account

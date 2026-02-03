@@ -7,18 +7,36 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestResolve_Builtin(t *testing.T) {
-	v, err := Resolve("deepseek", nil)
+func TestResolve_FromConfig(t *testing.T) {
+	// All vendors must be defined in config file
+	vendors := map[string]VendorConfig{
+		"deepseek": {
+			Protocols: map[string]string{
+				"openai":    "https://api.deepseek.com/v1",
+				"anthropic": "https://api.deepseek.com/anthropic",
+			},
+			DefaultModels: map[string]string{
+				"openai":    "deepseek-chat",
+				"anthropic": "deepseek-chat",
+			},
+		},
+	}
+
+	v, err := Resolve("deepseek", vendors)
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.deepseek.com/v1", v.Protocols["openai"])
 	assert.Equal(t, "https://api.deepseek.com/anthropic", v.Protocols["anthropic"])
+	assert.Equal(t, "deepseek-chat", v.DefaultModels["openai"])
 }
 
-func TestResolve_Custom(t *testing.T) {
+func TestResolve_CustomVendor(t *testing.T) {
 	customVendors := map[string]VendorConfig{
 		"custom": {
 			Protocols: map[string]string{
 				"openai": "https://custom.com/v1",
+			},
+			DefaultModels: map[string]string{
+				"openai": "custom-model",
 			},
 		},
 	}
@@ -26,30 +44,29 @@ func TestResolve_Custom(t *testing.T) {
 	v, err := Resolve("custom", customVendors)
 	require.NoError(t, err)
 	assert.Equal(t, "https://custom.com/v1", v.Protocols["openai"])
+	assert.Equal(t, "custom-model", v.DefaultModels["openai"])
 }
 
-func TestResolve_WithBase(t *testing.T) {
-	customVendors := map[string]VendorConfig{
-		"glm-beta": {
-			Base: "glm",
+func TestResolve_NotFound(t *testing.T) {
+	// Vendor not defined in config - should error
+	vendors := map[string]VendorConfig{
+		"other": {
 			Protocols: map[string]string{
-				"anthropic": "https://beta.bigmodel.cn/anthropic",
+				"openai": "https://other.com/v1",
 			},
 		},
 	}
 
-	v, err := Resolve("glm-beta", customVendors)
-	require.NoError(t, err)
-	// Inherited from glm
-	assert.Equal(t, "https://open.bigmodel.cn/api/paas/v4", v.Protocols["openai"])
-	// Overridden
-	assert.Equal(t, "https://beta.bigmodel.cn/anthropic", v.Protocols["anthropic"])
+	_, err := Resolve("nonexistent", vendors)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not defined")
 }
 
-func TestResolve_NotFound(t *testing.T) {
-	_, err := Resolve("nonexistent", nil)
+func TestResolve_EmptyVendors(t *testing.T) {
+	// Empty vendors map
+	_, err := Resolve("deepseek", nil)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "AIM-VEN-001")
+	assert.Contains(t, err.Error(), "not defined")
 }
 
 func TestGetProtocolURL(t *testing.T) {
@@ -65,5 +82,28 @@ func TestGetProtocolURL(t *testing.T) {
 
 	_, err = v.GetProtocolURL("anthropic")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "AIM-VEN-002")
+	assert.Contains(t, err.Error(), "not supported")
+}
+
+func TestGetDefaultModel(t *testing.T) {
+	v := &Vendor{
+		DefaultModels: map[string]string{
+			"openai":    "gpt-4",
+			"anthropic": "claude-3",
+		},
+	}
+
+	assert.Equal(t, "gpt-4", v.GetDefaultModel("openai"))
+	assert.Equal(t, "claude-3", v.GetDefaultModel("anthropic"))
+	assert.Equal(t, "", v.GetDefaultModel("unknown"))
+}
+
+func TestGetDefaultModel_Nil(t *testing.T) {
+	v := &Vendor{
+		Protocols: map[string]string{
+			"openai": "https://api.example.com",
+		},
+	}
+
+	assert.Equal(t, "", v.GetDefaultModel("openai"))
 }

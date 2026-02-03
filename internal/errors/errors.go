@@ -16,6 +16,14 @@ type Error struct {
 
 func (e *Error) Error() string {
 	if e.Cause != nil {
+		return fmt.Sprintf("%s: %v", e.Message, e.Cause)
+	}
+	return e.Message
+}
+
+// LogMessage returns the error message with code for logging
+func (e *Error) LogMessage() string {
+	if e.Cause != nil {
 		return fmt.Sprintf("%s: %s: %v", e.Code, e.Message, e.Cause)
 	}
 	return fmt.Sprintf("%s: %s", e.Code, e.Message)

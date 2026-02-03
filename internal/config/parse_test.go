@@ -9,16 +9,19 @@ import (
 )
 
 func TestParse_MinimalConfig(t *testing.T) {
+	// Vendor must be explicitly specified
 	data := `
 version: "2"
 accounts:
-  deepseek: sk-test-key
+  work:
+    key: sk-test-key
+    vendor: deepseek
 `
 	cfg, err := Parse([]byte(data))
 	require.NoError(t, err)
 	assert.Equal(t, "2", cfg.Version)
-	assert.Equal(t, "sk-test-key", cfg.Accounts["deepseek"].Key)
-	assert.Equal(t, "deepseek", cfg.Accounts["deepseek"].Vendor) // auto-inferred
+	assert.Equal(t, "sk-test-key", cfg.Accounts["work"].Key)
+	assert.Equal(t, "deepseek", cfg.Accounts["work"].Vendor) // explicitly set
 }
 
 func TestParse_WithVendor(t *testing.T) {
@@ -42,7 +45,7 @@ accounts:
 `
 	_, err := Parse([]byte(data))
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "AIM-CFG-003")
+	assert.Contains(t, err.Error(), "not supported")
 }
 
 func TestResolveKey_Plain(t *testing.T) {
@@ -70,5 +73,5 @@ func TestResolveKey_EnvVar(t *testing.T) {
 func TestResolveKey_EnvVarNotSet(t *testing.T) {
 	_, err := ResolveKey("${NONEXISTENT_VAR}")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "AIM-ACC-002")
+	assert.Contains(t, err.Error(), "not set")
 }
