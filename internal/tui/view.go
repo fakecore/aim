@@ -52,19 +52,17 @@ func (m Model) renderHeader() string {
 	}
 	header := lipgloss.JoinHorizontal(lipgloss.Left, rendered...)
 
-	// Fill remaining width
-	headerWidth := lipgloss.Width(header)
-	if headerWidth < m.width {
-		filler := backgroundStyle.Width(m.width - headerWidth).Render("")
-		header = lipgloss.JoinHorizontal(lipgloss.Left, header, filler)
-	}
+	// Ensure full width with background
+	header = backgroundStyle.Width(m.width).Render(header)
 
 	return header
 }
 
 func (m Model) renderContent() string {
 	// Calculate available height for content
-	headerHeight := 1
+	// Header: tab height (1) + padding (2) = 3
+	// Footer: 2 lines
+	headerHeight := 3
 	footerHeight := 2
 	availableHeight := m.height - headerHeight - footerHeight
 	if availableHeight < 1 {
@@ -245,14 +243,5 @@ func truncate(s string, n int) string {
 
 func (m Model) renderFooter() string {
 	help := "? Help  v Vendors  q Quit"
-	footer := footerStyle.Render(help)
-
-	// Fill remaining width
-	footerWidth := lipgloss.Width(footer)
-	if footerWidth < m.width {
-		filler := backgroundStyle.Width(m.width - footerWidth).Render("")
-		footer = lipgloss.JoinHorizontal(lipgloss.Left, footer, filler)
-	}
-
-	return footer
+	return footerStyle.Width(m.width).Render(help)
 }
