@@ -84,7 +84,7 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get remaining args (after --)
-	toolArgs := cmd.Flags().Args()
+	toolArgs := args[1:]
 
 	// Dry run mode
 	if dryRun {
