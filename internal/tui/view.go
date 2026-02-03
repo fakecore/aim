@@ -60,9 +60,9 @@ func (m Model) renderHeader() string {
 
 func (m Model) renderContent() string {
 	// Calculate available height for content
-	// Header: tab height (1) + padding (2) = 3
-	// Footer: 2 lines
-	headerHeight := 3
+	// Header: tab height 1 (padding is included in the block, not extra)
+	// Footer: 2 lines (1 content + 1 padding)
+	headerHeight := 1
 	footerHeight := 2
 	availableHeight := m.height - headerHeight - footerHeight
 	if availableHeight < 1 {

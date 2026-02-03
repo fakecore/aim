@@ -58,6 +58,7 @@ func New(cfg *config.Config) Model {
 		accounts:    accounts,
 		selectedIdx: 0,
 		activeTab:   TabConfig,
+		layout:      LayoutSingle, // Default layout until WindowSizeMsg updates it
 	}
 }
 
