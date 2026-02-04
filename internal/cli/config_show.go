@@ -21,13 +21,13 @@ var configCmd = &cobra.Command{
 
 var configShowCmd = &cobra.Command{
 	Use:   "show",
-	Short: "Show configuration for an account",
-	Long:  `Display resolved configuration including account, key, and vendor information.`,
+	Short: "Show configuration for an account or all accounts",
+	Long:  `Display resolved configuration including account, key, and vendor information. If no account is specified, shows all accounts.`,
 	RunE:  configShow,
 }
 
 func init() {
-	configShowCmd.Flags().StringVarP(&showAccount, "account", "a", "", "Account to show")
+	configShowCmd.Flags().StringVarP(&showAccount, "account", "a", "", "Account to show (if not specified, shows all accounts)")
 	configCmd.AddCommand(configShowCmd)
 }
 
@@ -37,14 +37,37 @@ func configShow(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	account := showAccount
-	if account == "" {
-		account, err = cfg.GetDefaultAccount()
-		if err != nil {
-			return err
-		}
+	// If specific account requested, show only that account
+	if showAccount != "" {
+		return showSingleAccount(cfg, showAccount)
 	}
 
+	// Show all accounts
+	if len(cfg.Accounts) == 0 {
+		fmt.Println("No accounts configured.")
+		return nil
+	}
+
+	fmt.Printf("Configuration Summary:\n")
+	fmt.Printf("  Total accounts: %d\n", len(cfg.Accounts))
+	fmt.Printf("  Total vendors: %d\n", len(cfg.Vendors))
+	fmt.Printf("  Total keys: %d\n", len(cfg.Keys))
+	if cfg.Settings.DefaultAccount != "" {
+		fmt.Printf("  Default account: %s\n", cfg.Settings.DefaultAccount)
+	}
+	fmt.Println()
+
+	for accountName := range cfg.Accounts {
+		if err := showSingleAccount(cfg, accountName); err != nil {
+			fmt.Printf("  Error: %v\n", err)
+		}
+		fmt.Println("---")
+	}
+
+	return nil
+}
+
+func showSingleAccount(cfg *config.Config, account string) error {
 	acc, ok := cfg.Accounts[account]
 	if !ok {
 		return errors.Wrap(errors.ErrAccountNotFound, account)
